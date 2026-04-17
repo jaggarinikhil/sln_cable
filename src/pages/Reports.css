@@ -1,0 +1,96 @@
+.report-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.report-tab {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #94a3b8;
+  padding: 10px 22px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.92rem;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+.report-tab:hover { border-color: #475569; color: #e2e8f0; }
+.report-tab.active {
+  background: #1d4ed8;
+  border-color: #2563eb;
+  color: #fff;
+}
+
+.report-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.report-stat-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-top: 3px solid var(--c, #3b82f6);
+  border-radius: 10px;
+  padding: 16px;
+  text-align: center;
+  transition: transform 0.2s;
+}
+.report-stat-card:hover { transform: translateY(-2px); }
+
+.rsc-icon { font-size: 1.4rem; margin-bottom: 6px; }
+.rsc-val { font-size: 1.1rem; font-weight: 700; color: #e2e8f0; margin-bottom: 4px; }
+.rsc-label { font-size: 0.75rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* Balance display in form */
+.balance-display {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.balance-due   { color: #f87171; border-color: #7f1d1d; }
+.balance-over  { color: #fbbf24; border-color: #78350f; }
+.balance-clear { color: #34d399; border-color: #064e3b; }
+.balance-label { font-size: 0.78rem; font-weight: 500; }
+
+/* Balance pills in table */
+.balance-pill {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.pill-due   { background: rgba(248,113,113,0.15); color: #f87171; }
+.pill-over  { background: rgba(251,191,36,0.15);  color: #fbbf24; }
+.pill-clear { background: rgba(52,211,153,0.15);  color: #34d399; }
+
+/* Table totals row */
+.table-totals td {
+  background: #0f172a;
+  border-top: 2px solid #334155;
+  padding: 10px 12px;
+  font-size: 0.88rem;
+}
+
+/* Search input */
+.search-input {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #e2e8f0;
+  font-size: 0.88rem;
+  outline: none;
+  width: 240px;
+  transition: border-color 0.2s;
+}
+.search-input:focus { border-color: #3b82f6; }
