@@ -1,88 +1,64 @@
-// Bills
-export const getBills = () => {
-  const data = localStorage.getItem('sln_bills');
-  return data ? JSON.parse(data) : [];
+// Storage keys
+const KEYS = {
+  USERS: 'sln_users',
+  AUTH: 'sln_auth',
+  CUSTOMERS: 'sln_customers',
+  BILLS: 'sln_bills',
+  COMPLAINTS: 'sln_complaints',
+  HANDOVERS: 'sln_handovers',
+  WORK_HOURS: 'sln_work_hours',
+  SALARY: 'sln_salary',
+  SALARY_CONFIG: 'sln_salary_config'
 };
 
-export const saveBills = (bills) => {
-  localStorage.setItem('sln_bills', JSON.stringify(bills));
-};
-
-export const addBill = (bill) => {
-  const bills = getBills();
-  const totalAmount = parseFloat(bill.totalAmount) || 0;
-  const amountPaid = parseFloat(bill.amountPaid) || 0;
-  const newBill = {
-    ...bill,
-    id: Date.now().toString(),
-    totalAmount,
-    amountPaid,
-    balanceAmount: totalAmount - amountPaid,
-    billGeneratedDate: bill.billGeneratedDate || new Date().toISOString().split('T')[0],
-    billPaidDate: bill.billPaidDate || '',
-    createdAt: new Date().toISOString(),
-    modifiedCount: 0,
-  };
-  saveBills([...bills, newBill]);
-  return newBill;
-};
-
-export const updateBill = (id, updates, role) => {
-  const bills = getBills();
-  const idx = bills.findIndex(b => b.id === id);
-  if (idx === -1) return { success: false, message: 'Bill not found' };
-
-  const bill = bills[idx];
-
-  if (role === 'worker' && bill.modifiedCount >= 1) {
-    return { success: false, message: 'Edit limit reached' };
+const get = (key) => {
+  try {
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : [];
+  } catch (e) {
+    console.error(`Error reading ${key} from localStorage`, e);
+    return [];
   }
-
-  const totalAmount = parseFloat(updates.totalAmount) || 0;
-  const amountPaid = parseFloat(updates.amountPaid) || 0;
-
-  const updatedBill = {
-    ...bill,
-    ...updates,
-    totalAmount,
-    amountPaid,
-    balanceAmount: totalAmount - amountPaid,
-    modifiedCount: role === 'worker' ? bill.modifiedCount + 1 : bill.modifiedCount,
-    updatedAt: new Date().toISOString(),
-  };
-
-  bills[idx] = updatedBill;
-  saveBills(bills);
-  return { success: true, bill: updatedBill };
 };
 
-// Complaints
-export const getComplaints = () => {
-  const data = localStorage.getItem('sln_complaints');
-  return data ? JSON.parse(data) : [];
+const set = (key, data) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (e) {
+    console.error(`Error writing ${key} to localStorage`, e);
+  }
 };
 
-export const saveComplaints = (complaints) => {
-  localStorage.setItem('sln_complaints', JSON.stringify(complaints));
-};
+export const storage = {
+  getUsers: () => get(KEYS.USERS),
+  setUsers: (data) => set(KEYS.USERS, data),
 
-export const addComplaint = (complaint) => {
-  const complaints = getComplaints();
-  const newComplaint = {
-    ...complaint,
-    id: Date.now().toString(),
-    status: 'Pending',
-    createdAt: new Date().toISOString(),
-  };
-  saveComplaints([...complaints, newComplaint]);
-  return newComplaint;
-};
+  getAuth: () => {
+    try {
+      const data = localStorage.getItem(KEYS.AUTH);
+      return data ? JSON.parse(data) : null;
+    } catch (e) { return null; }
+  },
+  setAuth: (data) => data ? localStorage.setItem(KEYS.AUTH, JSON.stringify(data)) : localStorage.removeItem(KEYS.AUTH),
 
-export const updateComplaintStatus = (id, status) => {
-  const complaints = getComplaints();
-  const idx = complaints.findIndex(c => c.id === id);
-  if (idx === -1) return false;
-  complaints[idx] = { ...complaints[idx], status, updatedAt: new Date().toISOString() };
-  saveComplaints(complaints);
-  return true;
+  getCustomers: () => get(KEYS.CUSTOMERS),
+  setCustomers: (data) => set(KEYS.CUSTOMERS, data),
+
+  getBills: () => get(KEYS.BILLS),
+  setBills: (data) => set(KEYS.BILLS, data),
+
+  getComplaints: () => get(KEYS.COMPLAINTS),
+  setComplaints: (data) => set(KEYS.COMPLAINTS, data),
+
+  getHandovers: () => get(KEYS.HANDOVERS),
+  setHandovers: (data) => set(KEYS.HANDOVERS, data),
+
+  getWorkHours: () => get(KEYS.WORK_HOURS),
+  setWorkHours: (data) => set(KEYS.WORK_HOURS, data),
+
+  getSalary: () => get(KEYS.SALARY),
+  setSalary: (data) => set(KEYS.SALARY, data),
+
+  getSalaryConfig: () => get(KEYS.SALARY_CONFIG),
+  setSalaryConfig: (data) => set(KEYS.SALARY_CONFIG, data),
 };

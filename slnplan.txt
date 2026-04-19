@@ -1,0 +1,781 @@
+SLN Cable Billing App — Complete Detailed Plan (Final)
+
+1. PROJECT SETUP
+Location: Desktop/SLN Cable (new folder, clean React + Vite project — not copied from old app)
+Tech stack:
+* React 18 + Vite
+* React Router DOM (routing)
+* Context API (auth + data state)
+* Recharts (dashboard charts)
+* Lucide React (icons)
+* localStorage with swappable storage adapter
+* Plain CSS, mobile-first responsive
+Folder structure:
+
+
+SLN Cable/
+├── public/
+├── src/
+│   ├── components/
+│   │   ├── Layout.jsx, Sidebar.jsx, TopBar.jsx
+│   │   ├── ProtectedRoute.jsx, RequirePermission.jsx
+│   │   ├── Modal.jsx, Tabs.jsx, Table.jsx
+│   │   ├── CustomerModal.jsx, BillModal.jsx
+│   │   ├── Charts/ (PieChart, BarChart, LineChart wrappers)
+│   │   └── ...
+│   ├── pages/
+│   │   ├── Login.jsx
+│   │   ├── Dashboard.jsx
+│   │   ├── Customers.jsx, CustomerProfile.jsx
+│   │   ├── Billing.jsx (3 tabs)
+│   │   ├── Complaints.jsx
+│   │   ├── WorkHours.jsx
+│   │   ├── Salary.jsx
+│   │   ├── Reports.jsx (5 sub-tabs)
+│   │   ├── UserManagement.jsx
+│   │   └── MyCollections.jsx (worker-only)
+│   ├── context/
+│   │   ├── AuthContext.jsx
+│   │   └── DataContext.jsx
+│   ├── utils/
+│   │   ├── storage.js       (swappable adapter)
+│   │   ├── permissions.js   (role + custom permission map)
+│   │   ├── validators.js
+│   │   ├── seed.js          (initial users, default permissions)
+│   │   └── audit.js         (edit history helper)
+│   ├── App.jsx
+│   ├── main.jsx
+│   └── styles.css
+├── index.html
+├── package.json
+└── vite.config.js
+Run: npm install && npm run dev → http://localhost:5173 Build: npm run build → deployable to Vercel/Netlify
+
+2. AUTHENTICATION
+Single login page — username + password only, no role dropdown.
+Seeded users on first load:
+Username	Password	Role	Notes
+Jaggarinikhil	Nikhil@123	owner (super admin)	First owner, cannot be deleted
+mani	Mani@12	worker	Default permissions
+Login behavior:
+1. Credentials checked against sln_users
+2. On success → AuthContext stores session in sln_auth: { userId, username, name, role, permissions, loggedInAt }
+3. Role routing:
+    * Owner → /dashboard
+    * Worker → /billing
+4. Wrong credentials → inline error "Invalid username or password"
+5. Deactivated user → error "Account is disabled. Contact admin."
+Logout: clears sln_auth, redirects to /login.
+Security note (flagged in review): Frontend-only auth isn't production-secure. Must move to backend before public deploy.
+
+3. USER MANAGEMENT & PERMISSIONS (Owner only)
+3.1 Multiple owners + multiple workers
+* Admin (super owner) can create:
+    * Additional owners
+    * Multiple workers
+* Roles are strings in config (owner, worker) → easy to add manager, accountant later
+* Super admin (Jaggarinikhil) — flagged, cannot be deleted or demoted, always has all permissions
+3.2 Granular permissions per user
+Each user has a permissions object on top of their role:
+
+
+js
+permissions: {
+  // Dashboard
+  viewDashboard: false,
+
+  // Customers
+  viewCustomers: true,
+  createCustomer: true,
+  editCustomer: true,
+  deleteCustomer: false,
+
+  // Bills
+  generateBill: true,
+  editBill: false,
+  deleteBill: false,
+
+  // Payments
+  recordPayment: true,
+  editPayment: false,
+  deletePayment: false,
+
+  // Complaints
+  viewComplaints: true,
+  createComplaint: true,
+  updateComplaintStatus: true,
+  deleteComplaint: false,
+
+  // Work Hours
+  logOwnHours: true,
+  viewAllHours: false,
+  editAnyHours: false,
+
+  // Salary
+  recordSalary: false,
+  editSalary: false,
+  viewOwnSalary: true,
+  viewAllSalary: false,
+
+  // Reports
+  viewReports: false,
+  viewWorkerCollections: false,
+  viewOwnCollections: true,
+
+  // Workers cash reconciliation
+  recordHandover: false,
+
+  // User management
+  manageUsers: false,
+
+  // Owner override flags
+  canOverrideGeneratedBy: false,     // pick who generated a bill
+  canOverrideReceivedBy: false       // pick who collected payment
+}
+3.3 Default permission presets
+When creating a user, admin picks a preset first, then fine-tunes:
+Owner preset (all true) — full access.
+Worker preset:
+* ✓ viewCustomers, createCustomer, editCustomer
+* ✓ generateBill, recordPayment
+* ✓ viewComplaints, createComplaint, updateComplaintStatus
+* ✓ logOwnHours, viewOwnSalary, viewOwnCollections
+* ✗ everything else
+Custom: admin ticks any combination.
+3.4 User Management page
+List view:
+* Table: Username | Name | Role | Active | Created By | Created On | Actions
+* Search + filter by role
+* Super admin row shown with a lock icon (cannot edit/delete)
+Create user:
+* Username (unique), password, display name
+* Role dropdown (owner / worker)
+* Permission preset selector → auto-fills permissions
+* Permission checkboxes — grouped by section (Dashboard / Customers / Bills / Payments / Complaints / Hours / Salary / Reports / Users)
+* "Save" creates user
+Edit user:
+* Change name, role, permissions
+* Reset password (admin generates new one)
+* Toggle active/inactive (soft disable — preserves history)
+Delete user:
+* Soft delete only (keeps audit trail)
+* Cannot delete: self, super admin, users with outstanding cash pending
+Audit log per user:
+* Who created them, when
+* Every permission change (old → new, by whom, when)
+3.5 Permission enforcement
+Three layers of enforcement:
+1. Route level — <ProtectedRoute requires="viewDashboard"> wraps each route
+2. Menu level — sidebar items hidden if user lacks permission
+3. Component level — buttons/actions conditionally rendered via <RequirePermission perm="editBill">
+All three checked — direct URL access to restricted page redirects to first allowed page.
+
+4. DATA MODELS
+All stored in localStorage with swappable adapter. Keys prefixed sln_.
+4.1 Users (sln_users)
+
+
+js
+{
+  id, username, password, name, role,
+  permissions: { ... },         // full object above
+  active: true,
+  isSuperAdmin: false,
+  createdAt, createdBy,
+  updatedAt, updatedBy,
+  permissionHistory: [
+    { changedBy, changedAt, changes: { perm: [old, new] } }
+  ]
+}
+4.2 Customers (sln_customers)
+
+
+js
+{
+  id, name, phone, address,
+  boxNumber,                    // required if TV active, else null
+  services: {
+    tv:       { active, activatedAt, deactivatedAt, monthlyRate },
+    internet: { active, activatedAt, deactivatedAt, monthlyRate }
+  },
+  createdAt, createdBy, updatedAt, updatedBy
+}
+4.3 Bills (sln_bills)
+
+
+js
+{
+  id,
+  billNumber,                   // from physical book, unique, mandatory
+  customerId,
+  serviceType,                  // 'tv' | 'internet' | 'both'
+  tvAmount, internetAmount, totalAmount,
+  generatedDate,                // default today, past ok, future blocked
+  generatedBy, generatedByName, // user who created
+  amountPaid,                   // sum of payments[]
+  balance,                      // totalAmount - amountPaid
+  status,                       // 'Due' | 'Partial' | 'Paid'
+  payments: [
+    {
+      id, amount, tvAmount, internetAmount,
+      date, mode,               // 'Cash' | 'PhonePe' | 'GPay'
+      collectedBy, collectedByName,
+      notes, createdAt
+    }
+  ],
+  createdAt,
+  lastEditedBy, lastEditedAt,
+  editHistory: [
+    { editedBy, editedAt, changes: { field: [old, new] } }
+  ]
+}
+4.4 Complaints (sln_complaints)
+
+
+js
+{
+  id, customerId, description, status,  // 'Pending' | 'In Progress' | 'Completed'
+  createdAt, createdBy, updatedAt, updatedBy,
+  statusHistory: [{ status, changedBy, changedAt }]
+}
+4.5 Worker Handovers (sln_handovers)
+
+
+js
+{
+  id, workerId, workerName, date, amount,
+  receivedBy, receivedByName,   // who recorded the handover (owner)
+  notes, createdAt
+}
+4.6 Work Hours (sln_work_hours)
+
+
+js
+{
+  id, userId, userName, date, hours, notes,
+  createdAt, createdBy,
+  editedAt, editedBy,
+  editHistory: [...]
+}
+Unique per (userId, date).
+4.7 Salary Payments (sln_salary)
+
+
+js
+{
+  id, workerId, workerName,
+  amount, date, month,          // e.g. "2026-04"
+  paymentMode,                  // Cash | PhonePe | GPay | Bank Transfer
+  notes, paidBy, paidByName, createdAt,
+  editedAt, editedBy,
+  editHistory: [...],
+  deleted: false, deletedAt, deletedBy, deleteReason  // soft delete
+}
+4.8 Salary Config (sln_salary_config)
+
+
+js
+{
+  workerId, monthlySalary, effectiveFrom,
+  updatedBy, updatedAt
+}
+4.9 Auth session (sln_auth)
+
+
+js
+{ userId, username, name, role, permissions, loggedInAt }
+
+5. PAGES — DETAILED
+5.1 Login page
+* Two fields: username, password
+* Inline error on wrong creds or disabled account
+* Optional "Remember me"
+5.2 Dashboard (requires viewDashboard)
+Top KPI cards (4-grid desktop / 2-grid tablet / 1-col mobile):
+1. Total Bill Collected (this month)
+2. Total Due (outstanding balance across all bills)
+3. Cash Pending with Workers (red if > 0)
+4. Total Customers
+Secondary cards: 5. TV Revenue this month 6. Internet Revenue this month 7. Bills Generated this month 8. Salary Paid this month 9. Total Work Hours this month 10. Active Complaints
+Charts:
+* Pie chart: Payment mode split (Cash / PhonePe / GPay)
+* Stacked bar chart: Last 6 months, TV vs Internet
+* Line chart: Daily collection trend (last 30 days)
+* Bar chart: Per-worker collections this month
+Recent Bills table (full columns — fixing previous "not showing full details"): Bill # | Customer | Service | Total | Paid | Balance | Status | Date | Generated By | Actions
+Per-user breakdown: User | Role | Bills Generated | Amount Collected | Pending Cash | Salary Paid
+Workers Money section: Per-worker card: cash collected / handed / pending / digital collected
+All cards clickable → relevant drill-down report.
+5.3 Customers page (requires viewCustomers)
+List:
+* Search bar (name / phone / box #)
+* Filter: All / TV / Internet / Both
+* Table: Name | Phone | Services badges | Box # | Outstanding | Actions
+Create/Edit modal (requires createCustomer / editCustomer):
+* Name, phone (unique), address — required
+* Services checkboxes: TV, Internet (≥ 1 required)
+* Box number field appears and becomes mandatory only when TV checked
+* Monthly rate per active service
+* Save validates phone + box uniqueness
+Edit behavior:
+* TV-only customer can add Internet via edit (tick checkbox)
+* Turning off a service with active bills → warning
+5.4 Customer Profile page
+Header: Name | Phone | Address | Service badges | Customer since
+Service details:
+* TV: status | activated date | monthly rate
+* Internet: status | activated date | monthly rate
+Pending Bills card (shown at top if any):
+* Big red number: total outstanding
+* Count of Partial + Due bills
+* Table: Bill # | Service | Total | Paid | Balance | Status | Days Pending | [Collect Payment]
+Payment History table: every payment — date, bill #, service, amount, mode, collected by
+Monthly Spend Summary:
+Month	TV	Internet	Total
+Apr '26	₹300	₹800	₹1,100
+Lifetime totals: TV total | Internet total | Grand total
+Complaint history: this customer's complaints
+5.5 Billing page — 3 tabs
+Tab 1: Customer Management
+Same as Customers page (embedded for quick access).
+Tab 2: Generate Bill (requires generateBill)
+Step 1 — Select customer:
+* Search box (name / phone / box)
+* Live dropdown shows matches (name + phone + service badges)
+* No match → "Create New Customer" button → inline modal → auto-selects on save
+Step 2 — Auto-fill (read-only): Name, phone, box #, active services
+Step 3 — Bill entry:
+* Bill number (from physical book — mandatory, unique)
+* Bill date (default today, past ok, future blocked)
+* Amount fields:
+    * Both services → TV amount + Internet amount (pre-filled from customer rate)
+    * Single service → one field
+    * Total auto-computed
+* Generated By:
+    * If canOverrideGeneratedBy = false (worker) → locked to self
+    * If canOverrideGeneratedBy = true (owner) → dropdown of all active users, default self
+Step 4 — Save: creates bill, no worker edits allowed.
+Tab 3: Bill Payment (requires recordPayment)
+Step 1 — Select bill:
+* Search by customer / bill #
+* Default: show only bills with balance > 0 (toggle to show all)
+Step 2 — Auto-fill (read-only): Customer details, bill #, service, total, already paid, balance
+Step 3 — Payment entry:
+* Amount paid (≤ balance)
+    * Both services → TV + Internet split fields
+* Paid date (default today, past ok, future blocked)
+* Payment mode: radio — PhonePe / Google Pay / Cash
+* Received By:
+    * Worker → locked to self
+    * Owner (with canOverrideReceivedBy) → dropdown
+* Notes (optional)
+Step 4 — Save:
+* Appends to bill's payments[]
+* Recomputes amountPaid, balance, status
+* Worker cannot edit/delete this payment
+5.6 Complaints page (requires viewComplaints)
+* List: customer | description | status | created date | actions
+* Filter by status
+* Create (requires createComplaint): select customer (or create inline), description
+* Update status (requires updateComplaintStatus): Pending → In Progress → Completed
+* Delete: requires deleteComplaint
+5.7 Work Hours page (requires logOwnHours)
+Worker view:
+* Form: date (today default, past ok), hours, notes
+* Submit → one entry per day, no edits, no deletes
+* If entry exists today → "Hours already logged. Contact owner for changes."
+* Read-only list of own past entries
+Owner view (viewAllHours + editAnyHours):
+* Toggle: My hours / All workers
+* Filter by worker + date range
+* Table with edit/delete
+* Can log hours on worker's behalf
+* Full audit log
+5.8 Salary page
+Worker view (viewOwnSalary) — "My Salary":
+* This month total
+* YTD total
+* List: date | amount | for month | mode | notes
+* Month filter
+* Read-only — no add/edit/delete
+Owner view (recordSalary + editSalary + viewAllSalary):
+* Record payment form: worker | amount | date | for month | mode | notes
+* Multiple payments per month per worker supported (advance + balance)
+* All entries table with edit/delete
+* Soft delete with reason (compliance)
+* Per-worker drill-down
+* Optional salary config (monthly expected) → enables variance
+5.9 Reports page (requires viewReports) — 5 sub-tabs
+a) Daily Report
+* Date picker (default today)
+* Bills generated — TV/Internet split
+* Payments received — totals per mode per service
+* Per-worker activity that day
+b) Monthly Report
+* Month picker
+* Revenue totals (TV / Internet / Total)
+* Payment mode split per service
+* Per-user breakdown
+* Outstanding at start vs end of month
+c) Worker Collections (viewWorkerCollections)
+* Date range filter
+* Per-worker table:
+| Worker | TV Cash | TV PhonePe | TV GPay | Int Cash | Int PhonePe | Int GPay | Total | Cash Handed | Cash Pending |
+* Click worker → drill-down:
+    * Daily breakdown
+    * Pie chart of mode split
+    * All transactions log
+    * Handover log
+    * Date filter (today / week / month / custom)
+* [Record Handover] button per row (requires recordHandover) → dialog
+d) Work Hours Report
+* All workers × date range
+* Monthly summary per worker: total hours, avg/day, days worked, days missed
+* Bar chart comparison
+e) Salary Report
+* Monthly: all workers × month, paid vs expected
+* Yearly: 12-column view per worker
+* Payment mode split
+* Salary outflow bar chart
+5.10 User Management page (requires manageUsers)
+* List all users (search + role filter)
+* Super admin row locked
+* Create user:
+    * Username, password, name, role
+    * Permission preset (Owner / Worker / Custom)
+    * Permission checkboxes grouped by section
+* Edit user: name, role, permissions, password reset
+* Deactivate: soft disable
+* Delete: soft delete (not allowed for self / super admin / users with pending cash)
+* Permission change audit log per user
+5.11 My Collections widget (worker-only, viewOwnCollections)
+Embedded in worker's billing page top/sidebar:
+* Today's collections table:
+Mode	TV	Internet	Total
+Cash	₹	₹	₹
+PhonePe	₹	₹	₹
+GPay	₹	₹	₹
+Total	₹	₹	₹
+	•	Cash pending handover (big number)
+* Recent collections list (own, daily)
+* No monthly summary, no other workers, read-only
+
+6. KEY RULES & VALIDATIONS
+Rule	Detail
+Future dates	Blocked on bill generate, payment, work hours, salary
+Bill number	Mandatory, unique across all bills
+Phone number	Format check + unique per customer
+Box number	Mandatory if TV active; unique
+At least one service	Customer must have TV, Internet, or both
+Amount paid	≤ current balance
+Work hours	One per user per day; worker can't edit
+Salary	Owner-only record/edit/delete; multiple/month allowed
+Bill edit	Permission-gated; worker never has editBill
+Payment edit/delete	Permission-gated; worker never has it
+Inline customer creation	Available from Generate Bill / Payment / Complaint
+Audit logs	All edits on bills / payments / hours / salary / permissions logged
+Soft delete	Used for: salary, users, customers with history
+Super admin	Cannot be deleted / demoted / have permissions reduced
+Permission checks	Route + menu + component levels (defense in depth)
+7. DATA FLOW
+
+
+Users + Permissions (sln_users)
+   ↓ gate every action
+Customer (services, rates)
+   ↓ referenced by
+Bill (customerId, TV amount, Internet amount, generatedBy)
+   ↓ holds multiple
+Payment (mode, service split, collectedBy, date)
+   ↓ aggregates feed
+      ├─ Customer profile (monthly spend, pending bills)
+      ├─ Worker's "My Collections" (own, daily)
+      ├─ Worker Collections Report (all, any range)
+      ├─ Daily / Monthly Reports
+      └─ Dashboard KPIs + charts
+
+Handover (workerId, cash amount, date)
+   └─ reconciles against Cash collected → Cash Pending
+
+Work Hours (userId, date, hours)
+   ├─ Worker's own hours view
+   ├─ Owner's Work Hours Report
+   └─ Dashboard manpower card
+
+Salary Payment (workerId, amount, month, mode)
+   ├─ Worker's "My Salary" (own, read-only)
+   ├─ Owner's Salary Report (all, any range)
+   └─ Dashboard "Salary Paid" card
+
+8. UI / UX
+Responsive design:
+* Mobile-first CSS
+* Breakpoints: phone (<640px), tablet (640–1024px), desktop (>1024px)
+* Phone: bottom tab bar for main nav
+* Tablet/desktop: left sidebar
+* All tables horizontally scrollable on phone
+* Forms single-column on phone, two-column on tablet+
+* Touch-friendly tap targets (≥44px)
+* No hover-only interactions
+Visual design:
+* Clean, professional cable-operator aesthetic
+* Clear color coding: green (paid), yellow (partial), red (due/pending)
+* Status badges throughout
+* Empty states with helpful CTAs
+* Confirmation dialogs on destructive actions
+Navigation:
+* Sidebar menu items filtered by user's permissions
+* Active page highlighted
+* Username + role badge in top bar
+* Logout button
+
+9. SECURITY & CODE REVIEW (end of build)
+Will audit for:
+1. XSS — no dangerouslySetInnerHTML, all inputs escaped by React
+2. localStorage — all JSON.parse wrapped in try/catch
+3. Password storage — flagged as plaintext (frontend-only limitation)
+4. Input validation on every form
+5. Permission checks at route + component level
+6. No PII logged to console
+7. No inline scripts / eval
+8. Audit trails working end-to-end
+9. Super admin protection enforced
+10. Soft-delete preserving referential integrity
+Documented limitations for production migration:
+* Move auth to backend (JWT + bcrypt)
+* Move storage to real DB (Firestore / Postgres)
+* Add HTTPS
+* Add rate limiting on login
+* Consider MFA for owner accounts
+
+10. FINAL FEATURE CHECKLIST — 28 items
+1. ✅ Single login, auto role-detect
+2. ✅ Seeded super admin (Jaggarinikhil) — cannot be deleted
+3. ✅ Multiple owners + multiple workers supported
+4. ✅ Granular per-user permissions (25+ permission flags)
+5. ✅ Permission presets (Owner / Worker / Custom)
+6. ✅ User management page with full CRUD + audit
+7. ✅ Customer: TV / Internet / Both toggleable anytime
+8. ✅ Box # mandatory for TV customers only
+9. ✅ Customer profile: details + monthly per-service spend + pending bills
+10. ✅ Inline customer creation from billing flows
+11. ✅ Bills split by service (TV amount + Internet amount)
+12. ✅ Bill number (physical book) mandatory + unique
+13. ✅ Worker: generate bills, no edits ever
+14. ✅ Worker: record payments, no edits/deletes ever
+15. ✅ Owner: unlimited edits with audit log
+16. ✅ Partial payments, multiple per bill
+17. ✅ Generated-by / Received-by: permission-gated override
+18. ✅ Worker's own collections view (daily only)
+19. ✅ Owner's full reports (daily / monthly / worker / hours / salary)
+20. ✅ All reports split TV vs Internet
+21. ✅ Payment modes: Cash / PhonePe / GPay — tracked per mode per service
+22. ✅ Cash handover reconciliation
+23. ✅ Work hours: worker logs once/day, owner edits
+24. ✅ Work hours reports with monthly summaries
+25. ✅ Salary: owner records/edits/deletes with soft delete
+26. ✅ Salary: multiple payments per month supported
+27. ✅ Salary reports: monthly, yearly, per mode, per worker
+28. ✅ Dashboard: full KPIs, TV/Internet split, charts, clickable drill-downs
+29. ✅ Future dates blocked across all date inputs
+30. ✅ localStorage with swappable adapter (future backend-ready)
+31. ✅ Mobile / tablet / desktop responsive
+32. ✅ Audit logs across bills, payments, hours, salary, permissions
+33. ✅ Full code review + security audit at end
+
+Plan is locked and complete. Ready to build. Shall I start?
+
+
+
+
+
+CAN WE MAKE ANY OTTHER OPTMIATIONS FOR THIS APP
+12:59 PM
+
+
+
+
+
+Yes — here are meaningful optimizations I'd suggest, grouped by impact. You pick what to include; I'll build the rest as-planned.
+
+🔥 HIGH IMPACT (strongly recommend)
+1. Data sync across devices — actually solve it
+You said "I'll take care" but the core pain you mentioned was "saved on laptop doesn't show on phone." localStorage can't solve this. Options:
+* Firebase Firestore — free tier, real-time sync across devices, 30 min setup
+* Supabase — free tier, Postgres-based, cleaner if you scale
+* Google Sheets as backend — zero-cost, works offline, export built-in, familiar to non-tech users
+Without this, the app is single-device only. This is the single biggest optimization.
+2. WhatsApp bill sharing
+One-tap "Send bill to customer via WhatsApp" button → opens WhatsApp with pre-formatted message:
+
+
+SLN Cable — Bill #1234
+Customer: Ravi (Box 45)
+TV: ₹300 | Internet: ₹800
+Total: ₹1,100  Due: ₹1,100
+Paid: PhonePe 9876543210
+Uses wa.me/ link — no WhatsApp Business API needed. Customers love this. Workers save hours.
+3. Bill receipt PDF / thermal printer format
+* Generate printable receipt on payment save
+* Phone can share receipt via WhatsApp/SMS
+* If you have a thermal printer, 80mm-width format (free, just CSS)
+4. Bulk monthly bill generation
+At month start, owner clicks "Generate all monthly bills" → creates bills for every active customer using their monthly rate. Saves hours. Each bill gets the next available number from a range you specify.
+5. Offline mode (Progressive Web App)
+Works without internet — writes queue locally, syncs when online. Critical for workers in the field. Vite has a PWA plugin, 30 min setup. Adds:
+* "Install app" icon on phone home screen (looks like native app)
+* Works in areas with weak signal
+* Auto-sync when back online (if backend connected)
+
+💪 MEDIUM IMPACT
+6. SMS/WhatsApp reminders for due bills
+* Scheduled reminder to customers with bills > 7 days overdue
+* "Send reminder" button on pending bills list
+* Template: "Hi Ravi, your SLN Cable bill of ₹1,100 is pending since Apr 10. Pay via PhonePe 9876543210 or call."
+7. Customer-facing bill lookup
+* Customer visits slncable.app/check/BOX45 → sees their pending bills
+* Or QR code on each physical bill → customer scans → sees bill + payment UPI link
+* Reduces worker time explaining balances
+8. UPI payment link / QR in app
+* Generate UPI QR code on bill payment screen
+* Customer scans → pays directly → worker marks as paid
+* UPI deep link: upi://pay?pa=your-upi@ybl&pn=SLN&am=1100
+9. Duplicate bill / quick-bill templates
+* "Duplicate last month's bill" button for a customer → one click, pre-filled
+* Saves 30 seconds per customer, multiplied by hundreds of customers
+10. Search across everything
+* Global search bar in header → finds customers, bills, complaints in one place
+* Phone number or partial name works
+* Hits a command-palette style dropdown
+11. Low-balance / overdue alerts on dashboard
+* Red badge on dashboard: "15 bills overdue >30 days"
+* Click → filtered list
+* Top 10 defaulters table (by amount outstanding)
+12. Per-customer rate history
+Track when rates change ("₹300 → ₹350 from May 2026") so old bills stay accurate. Planned model already supports this — just needs a rate-change UI.
+
+⚡ PERFORMANCE & RELIABILITY
+13. Data export / backup
+* Export all data as JSON button (owner only) → downloads sln-cable-backup-2026-04-18.json
+* Import from JSON → restores from backup
+* Critical safety net before you have real sync. Saves you if localStorage is cleared.
+* Also export per-sheet to Excel/CSV for accountant
+14. Storage size monitoring
+* localStorage has a 5-10MB cap
+* Show "Data usage: 2.3 MB / 10 MB" in settings
+* Warn at 80%
+* With 1000 customers and 12 months of bills you'll hit limits → forces the backend decision
+15. Pagination + virtual scrolling
+* Bills table with 10,000 rows destroys phone browsers
+* Load 50 at a time, infinite scroll
+* Cheap optimization, huge UX win at scale
+16. Debounced search inputs
+* Customer search fires on every keystroke currently
+* Debounce 300ms → faster on phones
+17. Memoized charts + tables
+* Dashboard re-renders all charts on every state change currently
+* useMemo on aggregations → instant response
+18. IndexedDB instead of localStorage
+* 50x larger storage limit
+* Faster for large datasets
+* Async API (doesn't block UI)
+* Slightly more code, but future-proof
+
+🛡️ SECURITY & AUDIT
+19. Password hashing even on frontend
+Currently plaintext in localStorage. Use bcryptjs → at least obscures passwords from casual inspection. Doesn't solve full frontend-auth problem but adds a layer.
+20. Session timeout
+Auto-logout after 30 min inactivity. Critical if worker's phone gets lost.
+21. Activity log (who did what, when)
+Separate from audit trails per entity — one global feed:
+* "Mani generated bill #1234 at 2:45 PM"
+* "Owner deleted salary entry for Mani"
+* Filter by user, date, action type
+* Huge for accountability, disputes, compliance
+22. Login history per user
+Track login times, device, IP (if possible). Detects unauthorized access.
+23. Two-step confirmation for destructive actions
+Delete bill / delete user → type "DELETE" or re-enter password. Prevents accidents.
+
+📱 UX POLISH
+24. Dark mode
+* Toggle in settings
+* Better for phone use at night
+* Easy win (CSS variables already in plan)
+25. Multi-language (Telugu + English)
+* You're in Andhra/Telangana based on "SLN Cable" — Telugu UI for workers who prefer it
+* Simple i18n map, ~2 hours to add, huge for adoption
+26. Bigger tap targets + swipe actions
+* Swipe left on bill → collect payment
+* Swipe right → view customer
+* Pull-to-refresh on lists
+* Standard mobile patterns
+27. Currency formatting
+* ₹ 1,23,456 (Indian numbering, not 1,234,567) — small but locally correct
+* 15 min to add
+28. Date shortcuts
+* "Today / Yesterday / This Week / This Month" quick filters everywhere
+* Instead of opening date picker
+29. Empty state illustrations + CTAs
+* "No bills yet — [Generate first bill]"
+* Instead of blank tables
+30. Undo toast for delete actions
+* "Bill deleted [Undo]" for 5 seconds before commit
+* Prevents fat-finger deletes
+
+📊 BUSINESS INTELLIGENCE
+31. Customer churn tracking
+* Flag customers with no payment in 60 days → "at risk"
+* Show on dashboard
+32. Revenue forecasting
+* "Expected this month: ₹X" based on active customers × rates
+* "Actual so far: ₹Y" → gap visible
+* Shows which customers haven't paid yet
+33. Worker performance metrics
+* Collection rate (collected vs owed-collected-by-them)
+* Hours logged vs collections made
+* Helps you spot top performers + underperformers
+34. Service-level profitability
+* TV revenue vs Internet revenue trends over time
+* Which service is growing? Informs expansion decisions
+
+🔧 DEVELOPER / MAINTAINABILITY
+35. TypeScript
+* Catches 90% of bugs at compile time
+* Worth it even for a small app — refactors become fearless
+* Plan already in JS; switching is 1 extra hour
+36. Form library (React Hook Form)
+* Current plan uses controlled inputs → lots of boilerplate
+* RHF → cleaner, faster, better validation
+37. Zod for validation
+* Runtime type checks on all data coming from localStorage
+* Catches corruption, schema migrations, etc.
+38. Simple test setup (Vitest)
+* Just 10-20 tests on critical math: balance calc, permission checks, date validation
+* Prevents regressions
+
+❓ MY RECOMMENDATION
+Must-add (high ROI, low effort):
+* #2 WhatsApp bill sharing
+* #4 Bulk monthly bill generation
+* #13 JSON export/import backup
+* #20 Session timeout
+* #21 Activity log
+* #27 Indian currency formatting
+* #28 Date shortcuts
+Strongly consider:
+* #1 Firebase sync (if you want phone↔laptop to actually work)
+* #5 PWA offline mode
+* #8 UPI QR payment
+* #25 Telugu language
+* #30 Undo toast
+Skip unless needed:
+* Everything else — add later when you hit the need
+
+Pick from those and I'll lock the final plan + start building.
+
+
+
+
+
+
