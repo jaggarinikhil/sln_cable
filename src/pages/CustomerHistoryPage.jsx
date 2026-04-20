@@ -91,7 +91,7 @@ const CustomerHistoryPage = () => {
             <style>{`
                 .hist-page { padding: 28px 32px; }
                 @media (max-width: 700px) { .hist-page { padding: 12px; } }
-                .history-container { max-width: 1200px; margin: 0 auto; }
+                .history-container { }
                 .search-box-large {
                     display: flex; align-items: center; gap: 20px;
                     background: rgba(0,0,0,0.2); border: 1px solid var(--border);

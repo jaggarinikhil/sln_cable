@@ -325,7 +325,7 @@ const Billing = () => {
             {modal === 'generate' && <GenerateBillModal onClose={() => setModal(null)} preselectedCustomer={preselectedCustomer} />}
 
             <style>{`
-                .billing-page { padding: 28px 32px; max-width: 1400px; }
+                .billing-page { padding: 28px 32px; }
 
                 .bl-page-header { margin-bottom: 20px; }
                 .bl-page-title {

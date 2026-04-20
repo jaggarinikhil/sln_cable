@@ -519,7 +519,7 @@ const Complaints = () => {
             )}
 
             <style>{`
-                .cp-page { padding: 28px 32px; max-width: 1400px; }
+                .cp-page { padding: 28px 32px; }
 
                 /* Customer filter banner */
                 .cp-customer-banner { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.25); border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; font-size: 0.84rem; color: var(--text-primary); }

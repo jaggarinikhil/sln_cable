@@ -295,7 +295,7 @@ const CustomerProfile = () => {
             )}
 
             <style>{`
-                .pp-page { padding: 24px 32px; max-width: 1200px; width: 100%; }
+                .pp-page { padding: 24px 32px; width: 100%; }
 
                 /* Hero */
                 .pp-hero {

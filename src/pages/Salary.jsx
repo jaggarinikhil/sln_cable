@@ -770,7 +770,7 @@ const Salary = () => {
             )}
 
             <style>{`
-                .sl-page { padding: 28px 32px; max-width: 1400px; }
+                .sl-page { padding: 28px 32px; }
                 @media (max-width: 700px) { .sl-page { padding: 14px 12px; } }
                 @media (max-width: 600px) { .sl-page { padding: 10px 10px; } }
 

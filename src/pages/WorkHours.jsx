@@ -716,7 +716,7 @@ const WorkHours = () => {
             </>}
 
             <style>{`
-                .wh-page { padding: 28px 32px; max-width: 1400px; }
+                .wh-page { padding: 28px 32px; }
                 @media (max-width: 700px) { .wh-page { padding: 14px 12px; } }
                 @media (max-width: 600px) { .wh-page { padding: 10px 10px; } }
 

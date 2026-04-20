@@ -1094,7 +1094,7 @@ const Reports = () => {
 
             <style>{`
                 /* ── Page shell ── */
-                .reports-page { padding: 28px 32px; max-width: 1200px; }
+                .reports-page { padding: 28px 32px; }
                 @media (max-width: 700px) { .reports-page { padding: 14px 12px; } }
 
                 /* ── Tab bar ── */

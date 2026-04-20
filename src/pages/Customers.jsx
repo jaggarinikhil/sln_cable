@@ -324,7 +324,6 @@ const Customers = () => {
             <style>{`
                 .cust-page {
                     padding: 32px;
-                    max-width: 1200px;
                 }
 
                 /* Header */

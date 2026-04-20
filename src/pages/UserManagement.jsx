@@ -589,7 +589,7 @@ const UserManagement = () => {
             )}
 
             <style>{`
-                .um-page { padding: 28px 32px; max-width: 1200px; }
+                .um-page { padding: 28px 32px; }
 
                 .um-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; gap: 16px; }
                 .um-title {
