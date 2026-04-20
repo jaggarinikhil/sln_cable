@@ -411,7 +411,7 @@ const OwnerDashboard = ({ customers, bills, complaints, navigate }) => {
                 {/* Recent Payments */}
                 <div className="card recent-activity">
                     <h3>Recent Payments</h3>
-                    <div className="table-container no-border no-margin">
+                    <div className="table-container no-border no-margin" style={{ maxHeight: 260, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
                         <table className="data-table">
                             <thead>
                                 <tr>
@@ -454,7 +454,7 @@ const OwnerDashboard = ({ customers, bills, complaints, navigate }) => {
                 {/* Recent Complaints */}
                 <div className="card recent-activity">
                     <h3>Recent Complaints</h3>
-                    <div className="table-container no-border no-margin">
+                    <div className="table-container no-border no-margin" style={{ maxHeight: 260, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
                         <table className="data-table">
                             <thead>
                                 <tr>
@@ -627,7 +627,7 @@ const DashboardStyles = () => (
     .recent-activity h3 { margin-bottom: 10px; }
     .dashboard-bottom-grid { gap: 12px; }
     .data-table th, .data-table td { padding: 8px 10px; font-size: 0.78rem; }
-    .recent-activity .table-container { max-height: 260px; overflow-y: auto !important; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .recent-activity .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 }
 @media (max-width: 480px) {
     .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
