@@ -411,7 +411,7 @@ const OwnerDashboard = ({ customers, bills, complaints, navigate }) => {
                 {/* Recent Payments */}
                 <div className="card recent-activity">
                     <h3>Recent Payments</h3>
-                    <div className="table-container no-border no-margin" style={{ maxHeight: 260, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                    <div style={{ height: 260, overflowY: 'scroll', overflowX: 'auto', WebkitOverflowScrolling: 'touch', borderRadius: 12 }}>
                         <table className="data-table">
                             <thead>
                                 <tr>
@@ -454,7 +454,7 @@ const OwnerDashboard = ({ customers, bills, complaints, navigate }) => {
                 {/* Recent Complaints */}
                 <div className="card recent-activity">
                     <h3>Recent Complaints</h3>
-                    <div className="table-container no-border no-margin" style={{ maxHeight: 260, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                    <div style={{ height: 260, overflowY: 'scroll', overflowX: 'auto', WebkitOverflowScrolling: 'touch', borderRadius: 12 }}>
                         <table className="data-table">
                             <thead>
                                 <tr>
