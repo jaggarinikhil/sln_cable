@@ -177,6 +177,15 @@ const DailyReport = () => {
     const cashCollected = dayPayments.filter(p => (p.mode || '').toLowerCase() === 'cash').reduce((s, p) => s + (p.amount || 0), 0);
     const digitalCollected = dayPayments.filter(p => (p.mode || '').toLowerCase() !== 'cash').reduce((s, p) => s + (p.amount || 0), 0);
 
+    // TV vs Internet split for collected payments
+    const dayTvCollected = dayPayments.reduce((s, p) => {
+        const b = p._bill;
+        const total = b?.totalAmount || 0;
+        const ratio = total > 0 ? (b?.tvAmount || 0) / total : (b?.serviceType === 'tv' ? 1 : 0);
+        return s + (p.amount || 0) * ratio;
+    }, 0);
+    const dayInternetCollected = totalCollected - dayTvCollected;
+
     // ── Payment mode donut data ──────────────────────────────────────────────
     const modeMap = {};
     dayPayments.forEach(p => {
@@ -227,6 +236,24 @@ const DailyReport = () => {
                         <p className="daily-stat-label">Total Collected</p>
                         <p className="daily-stat-value" style={{ color: '#10b981' }}>{fmt(totalCollected)}</p>
                         <p className="daily-stat-sub">{dayPayments.length} payment{dayPayments.length !== 1 ? 's' : ''}</p>
+                    </div>
+                </div>
+                <div className="daily-stat-card" style={{ borderTopColor: C_TV }}>
+                    <div className="daily-stat-icon" style={{ color: C_TV, background: `${C_TV}22` }}>
+                        <Receipt size={20} />
+                    </div>
+                    <div>
+                        <p className="daily-stat-label">TV Collected</p>
+                        <p className="daily-stat-value" style={{ color: C_TV }}>{fmt(dayTvCollected)}</p>
+                    </div>
+                </div>
+                <div className="daily-stat-card" style={{ borderTopColor: C_NET }}>
+                    <div className="daily-stat-icon" style={{ color: C_NET, background: `${C_NET}22` }}>
+                        <Wallet size={20} />
+                    </div>
+                    <div>
+                        <p className="daily-stat-label">Internet Collected</p>
+                        <p className="daily-stat-value" style={{ color: C_NET }}>{fmt(dayInternetCollected)}</p>
                     </div>
                 </div>
                 <div className="daily-stat-card" style={{ borderTopColor: '#ef4444' }}>
@@ -645,6 +672,14 @@ const MonthlyReport = () => {
     const totalCollected = filteredPayments.reduce((s, p) => s + (p.amount || 0), 0);
     const totalHoursWorked = monthHours.reduce((s, h) => s + (parseFloat(h.hours) || 0), 0);
 
+    const monthTvCollected = filteredPayments.reduce((s, p) => {
+        const b = p._bill;
+        const total = b?.totalAmount || 0;
+        const ratio = total > 0 ? (b?.tvAmount || 0) / total : (b?.serviceType === 'tv' ? 1 : 0);
+        return s + (p.amount || 0) * ratio;
+    }, 0);
+    const monthInternetCollected = totalCollected - monthTvCollected;
+
     const serviceSplit = [
         { name: 'Cable TV', value: filteredBills.reduce((s, b) => s + (b.tvAmount || 0), 0) },
         { name: 'Internet', value: filteredBills.reduce((s, b) => s + (b.internetAmount || 0), 0) },
@@ -873,14 +908,30 @@ const MonthlyReport = () => {
                     <div className="daily-stat-icon" style={{ color: '#10b981', background: '#10b98122' }}><Wallet size={20} /></div>
                     <div><p className="daily-stat-label">Total Collected</p><p className="daily-stat-value" style={{ color: '#10b981' }}>{fmt(totalCollected)}</p></div>
                 </div>
+                <div className="daily-stat-card" style={{ borderTopColor: C_TV }}>
+                    <div className="daily-stat-icon" style={{ color: C_TV, background: `${C_TV}22` }}><Receipt size={20} /></div>
+                    <div>
+                        <p className="daily-stat-label">TV Collected</p>
+                        <p className="daily-stat-value" style={{ color: C_TV }}>{fmt(monthTvCollected)}</p>
+                    </div>
+                </div>
+                <div className="daily-stat-card" style={{ borderTopColor: C_NET }}>
+                    <div className="daily-stat-icon" style={{ color: C_NET, background: `${C_NET}22` }}><Wallet size={20} /></div>
+                    <div>
+                        <p className="daily-stat-label">Internet Collected</p>
+                        <p className="daily-stat-value" style={{ color: C_NET }}>{fmt(monthInternetCollected)}</p>
+                    </div>
+                </div>
                 <div className="daily-stat-card" style={{ borderTopColor: '#ef4444' }}>
                     <div className="daily-stat-icon" style={{ color: '#ef4444', background: '#ef444422' }}><AlertCircle size={20} /></div>
                     <div><p className="daily-stat-label">Complaints</p><p className="daily-stat-value" style={{ color: '#ef4444' }}>{monthComplaints.length}</p></div>
                 </div>
-                <div className="daily-stat-card" style={{ borderTopColor: '#f59e0b' }}>
-                    <div className="daily-stat-icon" style={{ color: '#f59e0b', background: '#f59e0b22' }}><Clock size={20} /></div>
-                    <div><p className="daily-stat-label">Hours Worked</p><p className="daily-stat-value" style={{ color: '#f59e0b' }}>{totalHoursWorked.toFixed(1)}h</p></div>
-                </div>
+                {totalHoursWorked > 0 && (
+                    <div className="daily-stat-card" style={{ borderTopColor: '#f59e0b' }}>
+                        <div className="daily-stat-icon" style={{ color: '#f59e0b', background: '#f59e0b22' }}><Clock size={20} /></div>
+                        <div><p className="daily-stat-label">Hours Worked</p><p className="daily-stat-value" style={{ color: '#f59e0b' }}>{totalHoursWorked.toFixed(1)}h</p></div>
+                    </div>
+                )}
             </div>
 
             {/* Charts */}

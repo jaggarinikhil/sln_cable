@@ -2,8 +2,8 @@ import React, { useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import {
     IndianRupee, Users, AlertCircle,
-    TrendingUp, ArrowUpRight, ArrowDownRight,
-    Clock, Banknote, CheckCircle, HardHat
+    ArrowUpRight, ArrowDownRight,
+    Clock, Banknote, CheckCircle, HardHat, Receipt, Wifi, Tv2
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -269,14 +269,27 @@ const WorkerDashboard = ({ user, navigate, bills }) => {
 /* ── Owner Dashboard ─────────────────────────────────────────── */
 const OwnerDashboard = ({ customers, bills, complaints, navigate }) => {
     const thisMonthBills = bills.filter(b => b.generatedDate?.startsWith(new Date().toISOString().slice(0, 7)));
-    const totalCollected = thisMonthBills.reduce((sum, b) => sum + (b.amountPaid || 0), 0);
     const totalOutstanding = bills.reduce((sum, b) => sum + (b.balance || 0), 0);
     const activeComplaints = complaints.filter(c => c.status !== 'Completed').length;
+
+    // Split collected this month by service type (proportional for 'both')
+    const tvCollected = thisMonthBills.reduce((sum, b) => {
+        const total = b.totalAmount || 0;
+        const ratio = total > 0 ? (b.tvAmount || 0) / total : (b.serviceType === 'tv' ? 1 : 0);
+        return sum + (b.amountPaid || 0) * ratio;
+    }, 0);
+    const internetCollected = thisMonthBills.reduce((sum, b) => {
+        const total = b.totalAmount || 0;
+        const ratio = total > 0 ? (b.internetAmount || 0) / total : (b.serviceType === 'internet' ? 1 : 0);
+        return sum + (b.amountPaid || 0) * ratio;
+    }, 0);
 
     const pendingBills = [...bills]
         .filter(b => b.status === 'Due' || b.status === 'Partial')
         .sort((a, b) => (b.balance || 0) - (a.balance || 0))
         .slice(0, 30);
+    const pendingBalance = bills.filter(b => b.status === 'Due' || b.status === 'Partial')
+        .reduce((s, b) => s + (b.balance || 0), 0);
 
     const modeSum = (label) => bills.reduce((sum, b) =>
         sum + (b.payments?.filter(p => p.mode?.toLowerCase() === label.toLowerCase()).reduce((s, p) => s + p.amount, 0) || 0), 0);
@@ -330,13 +343,19 @@ const OwnerDashboard = ({ customers, bills, complaints, navigate }) => {
         <>
             <div className="stats-grid">
                 <StatCard
-                    title="Collected This Month"
-                    value={`₹${totalCollected.toLocaleString('en-IN')}`}
-                    subtext="Revenue from bills"
-                    icon={<TrendingUp size={20} />}
-                    trend="up"
-                    trendValue="12.5"
-                    color="16, 185, 129"
+                    title="TV Collected"
+                    value={`₹${Math.round(tvCollected).toLocaleString('en-IN')}`}
+                    subtext="Cable TV this month"
+                    icon={<Tv2 size={20} />}
+                    color="168, 85, 247"
+                    onClick={() => navigate('/billing')}
+                />
+                <StatCard
+                    title="Internet Collected"
+                    value={`₹${Math.round(internetCollected).toLocaleString('en-IN')}`}
+                    subtext="Internet this month"
+                    icon={<Wifi size={20} />}
+                    color="6, 182, 212"
                     onClick={() => navigate('/billing')}
                 />
                 <StatCard
@@ -344,8 +363,6 @@ const OwnerDashboard = ({ customers, bills, complaints, navigate }) => {
                     value={`₹${totalOutstanding.toLocaleString('en-IN')}`}
                     subtext="Unpaid balances"
                     icon={<IndianRupee size={20} />}
-                    trend="down"
-                    trendValue="4.2"
                     color="248, 113, 113"
                     onClick={() => navigate('/payments', { state: { tab: 'pending' } })}
                 />
@@ -364,6 +381,14 @@ const OwnerDashboard = ({ customers, bills, complaints, navigate }) => {
                     icon={<AlertCircle size={20} />}
                     color="245, 158, 11"
                     onClick={() => navigate('/complaints')}
+                />
+                <StatCard
+                    title="Pending Bills"
+                    value={pendingBills.length}
+                    subtext={`₹${pendingBalance.toLocaleString('en-IN')} outstanding`}
+                    icon={<Receipt size={20} />}
+                    color="248, 113, 113"
+                    onClick={() => navigate('/payments', { state: { tab: 'pending' } })}
                 />
             </div>
 

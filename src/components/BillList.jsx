@@ -21,6 +21,27 @@ const BillDetailModal = ({ bill, onClose }) => {
         updateBill(bill.id, { payments: updatedPayments });
     };
 
+    const [editingPaymentIndex, setEditingPaymentIndex] = React.useState(null);
+    const [editingPaymentAmount, setEditingPaymentAmount] = React.useState('');
+
+    const handleSavePaymentAmount = (paymentIndex) => {
+        const newAmount = Number(editingPaymentAmount);
+        if (isNaN(newAmount) || newAmount < 0) return;
+        const updatedPayments = (bill.payments || []).map((p, i) =>
+            i === paymentIndex ? { ...p, amount: newAmount } : p
+        );
+        const newAmountPaid = updatedPayments.reduce((s, p) => s + (p.amount || 0), 0);
+        const newBalance = bill.totalAmount - newAmountPaid;
+        const newStatus = newBalance <= 0 ? 'Paid' : newAmountPaid > 0 ? 'Partial' : 'Due';
+        updateBill(bill.id, {
+            payments: updatedPayments,
+            amountPaid: newAmountPaid,
+            balance: newBalance,
+            status: newStatus,
+        });
+        setEditingPaymentIndex(null);
+    };
+
     const [isEditing, setIsEditing] = React.useState(false);
     const [editForm, setEditForm] = React.useState({
         generatedDate: bill.generatedDate || '',
@@ -214,7 +235,28 @@ const BillDetailModal = ({ bill, onClose }) => {
                                                 {p.closedBill ? <CheckCircle size={13} /> : <CreditCard size={13} />}
                                             </div>
                                             <div>
-                                                <div className="bd-payment-amt">₹{(p.amount || 0).toLocaleString('en-IN')}</div>
+                                                {isOwner && editingPaymentIndex === i ? (
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                        <input
+                                                            type="number"
+                                                            className="bd-edit-input"
+                                                            style={{ width: 90, padding: '4px 8px', fontSize: '0.85rem' }}
+                                                            value={editingPaymentAmount}
+                                                            onChange={e => setEditingPaymentAmount(e.target.value)}
+                                                            autoFocus
+                                                            min="0"
+                                                        />
+                                                        <button className="bd-edit-btn" style={{ padding: '3px 10px', fontSize: '0.75rem' }} onClick={() => handleSavePaymentAmount(i)}>Save</button>
+                                                        <button className="bd-edit-cancel bd-edit-btn" style={{ padding: '3px 10px', fontSize: '0.75rem' }} onClick={() => setEditingPaymentIndex(null)}>✕</button>
+                                                    </div>
+                                                ) : (
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                        <div className="bd-payment-amt">₹{(p.amount || 0).toLocaleString('en-IN')}</div>
+                                                        {isOwner && (
+                                                            <button className="bd-edit-btn" style={{ padding: '2px 8px', fontSize: '0.7rem' }} onClick={() => { setEditingPaymentIndex(i); setEditingPaymentAmount(p.amount || 0); }}>Edit</button>
+                                                        )}
+                                                    </div>
+                                                )}
                                                 <div className="bd-payment-by">
                                                     {isOwner ? (
                                                         <select
