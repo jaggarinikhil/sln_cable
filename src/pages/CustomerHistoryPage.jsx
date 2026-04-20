@@ -15,11 +15,11 @@ const CustomerHistoryPage = () => {
     ).slice(0, 8);
 
     return (
-        <div className="content">
+        <div className="hist-page">
             <div className="section-header">
-                <div className="flex items-center gap-3">
-                    <div className="logo-icon">
-                        <HistoryIcon color="white" size={24} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--accent-gradient)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <HistoryIcon color="white" size={20} />
                     </div>
                     <h1>Customer Financial History</h1>
                 </div>
@@ -45,7 +45,7 @@ const CustomerHistoryPage = () => {
                         </div>
 
                         {searchHistory && (
-                            <div className="history-matches mt-12 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="history-matches">
                                 {filteredCustomers.length === 0 ? (
                                     <p className="no-matches">No customers found.</p>
                                 ) : (
@@ -67,8 +67,8 @@ const CustomerHistoryPage = () => {
                     </div>
                 ) : (
                     <div className="history-detail-view">
-                        <div className="history-detail-header card flex justify-between items-center mb-6">
-                            <div className="flex items-center gap-4">
+                        <div className="history-detail-header card">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                                 <div className="detail-avatar">
                                     <User size={28} />
                                 </div>
@@ -90,6 +90,8 @@ const CustomerHistoryPage = () => {
             </div>
 
             <style>{`
+                .hist-page { padding: 28px 32px; }
+                @media (max-width: 700px) { .hist-page { padding: 12px; } }
                 .history-container { max-width: 1200px; margin: 0 auto; }
                 .search-box-large {
                     display: flex; align-items: center; gap: 20px;
@@ -99,6 +101,15 @@ const CustomerHistoryPage = () => {
                 .search-box-large:focus-within { border-color: var(--accent); background: rgba(0,0,0,0.3); box-shadow: 0 0 0 4px rgba(99,102,241,0.1); }
                 .search-box-large input { background: none; border: none; font-size: 1.25rem; color: white; width: 100%; outline: none; }
                 
+                .history-matches {
+                    display: grid;
+                    grid-template-columns: 1fr;
+                    gap: 12px;
+                    margin-top: 24px;
+                }
+                @media (min-width: 768px) {
+                    .history-matches { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+                }
                 .history-match-card {
                     display: flex; align-items: center; gap: 16px; padding: 16px;
                     background: rgba(255,255,255,0.03); border: 1px solid var(--border);
@@ -118,20 +129,8 @@ const CustomerHistoryPage = () => {
                 .history-detail-header { padding: 20px 32px; border-radius: 20px; }
                 .detail-info h3 { font-size: 1.5rem; margin-bottom: 2px; }
                 
-                .mt-12 { margin-top: 32px; }
-                .grid { display: grid; }
-                .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
-                .gap-4 { gap: 1rem; }
-                .mb-6 { margin-bottom: 24px; }
-                .flex { display: flex; }
-                .items-center { align-items: center; }
-                .justify-between { justify-content: space-between; }
-                .gap-3 { gap: 0.75rem; }
-                .gap-4 { gap: 1rem; }
-                
-                @media (min-flex: 768px) {
-                    .md\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-                }
+                .history-detail-header { padding: 20px 24px; border-radius: 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+                .detail-info h3 { font-size: 1.3rem; margin-bottom: 2px; }
             `}</style>
         </div>
     );

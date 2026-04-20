@@ -17,8 +17,8 @@ export const DataProvider = ({ children }) => {
         const normalized = stored.map(c => ({
             ...c,
             services: c.services || {
-                tv: { active: !!c.boxNumber, monthlyRate: 300 },
-                internet: { active: false, monthlyRate: 800 }
+                tv: { active: !!c.boxNumber, monthlyRate: 300, installationFee: 0 },
+                internet: { active: false, monthlyRate: 0, installationFee: 0 }
             }
         }));
         setCustomers(normalized);
@@ -41,9 +41,11 @@ export const DataProvider = ({ children }) => {
     };
 
     const addCustomer = (customer) => {
-        const updated = [...customers, { ...customer, id: Date.now().toString(), createdAt: new Date().toISOString() }];
+        const newId = Date.now().toString();
+        const updated = [...customers, { ...customer, id: newId, createdAt: new Date().toISOString() }];
         storage.setCustomers(updated);
         setCustomers(updated);
+        return newId;
     };
 
     const updateCustomer = (id, updates) => {
@@ -64,13 +66,42 @@ export const DataProvider = ({ children }) => {
         setBills(updated);
     };
 
-    // Add more helpers as needed for complaints, salary, etc.
+    // Apply multiple bill updates atomically (avoids stale-closure bug when looping)
+    const updateMultipleBills = (updatesList) => {
+        // updatesList: [{ id, updates }, ...]
+        const ts = new Date().toISOString();
+        let updated = bills;
+        for (const { id, updates } of updatesList) {
+            updated = updated.map(b => b.id === id ? { ...b, ...updates, updatedAt: ts } : b);
+        }
+        storage.setBills(updated);
+        setBills(updated);
+    };
+
+    const addComplaint = (complaint) => {
+        const updated = [...complaints, { ...complaint, id: Date.now().toString(), createdAt: new Date().toISOString(), status: 'Pending' }];
+        storage.setComplaints(updated);
+        setComplaints(updated);
+    };
+
+    const updateComplaintStatus = (id, status) => {
+        const updated = complaints.map(c => c.id === id ? { ...c, status, updatedAt: new Date().toISOString() } : c);
+        storage.setComplaints(updated);
+        setComplaints(updated);
+    };
+
+    const updateComplaint = (id, updates) => {
+        const updated = complaints.map(c => c.id === id ? { ...c, ...updates, updatedAt: new Date().toISOString() } : c);
+        storage.setComplaints(updated);
+        setComplaints(updated);
+    };
 
     return (
         <DataContext.Provider value={{
             customers, addCustomer, updateCustomer,
-            bills, addBill, updateBill,
-            complaints, handovers, workHours, salary,
+            bills, addBill, updateBill, updateMultipleBills,
+            complaints, addComplaint, updateComplaintStatus, updateComplaint,
+            handovers, workHours, salary,
             users, refreshData
         }}>
             {children}

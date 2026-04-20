@@ -1,212 +1,661 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import {
-    IndianRupee, Users, AlertCircle, Clock,
-    TrendingUp, Wallet, ArrowUpRight, ArrowDownRight, LogOut
+    IndianRupee, Users, AlertCircle,
+    TrendingUp, ArrowUpRight, ArrowDownRight,
+    Clock, Banknote, CheckCircle, HardHat
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { storage } from '../utils/storage';
 import {
     PieChart, Pie, Cell, ResponsiveContainer,
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend
 } from 'recharts';
 
-const StatCard = ({ title, value, subtext, icon, trend, trendValue, color }) => (
-    <div className="stat-card">
-        <div className="stat-card-main">
-            <div className="stat-info">
-                <p className="stat-title">{title}</p>
-                <h2 className="stat-value">{value}</h2>
-                <p className="stat-subtext">{subtext}</p>
-            </div>
-            <div className="stat-icon-wrapper" style={{ backgroundColor: `rgba(${color}, 0.1)`, color: `rgb(${color})` }}>
-                {icon}
+const StatCard = ({ title, value, subtext, icon, trend, trendValue, color, onClick }) => (
+    <div
+        className={`stat-card${onClick ? ' clickable' : ''}`}
+        style={{ '--card-color': `rgb(${color})`, '--card-color-alpha': `rgba(${color}, 0.1)` }}
+        onClick={onClick}
+    >
+        <div className="stat-card-top">
+            <div className="stat-icon-wrap">{icon}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                {trend && (
+                    <div className={`stat-trend ${trend}`}>
+                        {trend === 'up' ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}
+                        {trendValue}%
+                    </div>
+                )}
+                {onClick && (
+                    <span className="stat-card-arrow">→</span>
+                )}
             </div>
         </div>
-        {trend && (
-            <div className={`stat-trend ${trend}`}>
-                {trend === 'up' ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-                <span>{trendValue}% from last month</span>
-            </div>
-        )}
+        <div className="stat-value">{value}</div>
+        <div className="stat-title">{title}</div>
+        <div className="stat-subtext">{subtext}</div>
     </div>
 );
 
-const Dashboard = () => {
-    const { customers, bills, workHours, complaints } = useData();
-    const { logout } = useAuth();
+/* ── Worker Dashboard ─────────────────────────────────────────── */
+const WorkerDashboard = ({ user, navigate, bills }) => {
+    const perms = user?.permissions || {};
+    const todayStr = new Date().toISOString().split('T')[0];
 
-    // Simple aggregations for demo
-    const thisMonthBills = bills.filter(b => b.generatedDate.startsWith(new Date().toISOString().slice(0, 7)));
-    const totalCollected = thisMonthBills.reduce((sum, b) => sum + (b.amountPaid || 0), 0);
-    const totalOutstanding = bills.reduce((sum, b) => sum + (b.balance || 0), 0);
-    const activeComplaints = complaints.filter(c => c.status !== 'Completed').length;
-    const totalHours = workHours.reduce((sum, h) => sum + (parseFloat(h.hours) || 0), 0);
+    // Today's work hours (just for stat card)
+    const todayHours = useMemo(() => {
+        if (!perms.logOwnHours) return 0;
+        return storage.getWorkHours()
+            .filter(h => h.workerId === user.userId && h.date === todayStr)
+            .reduce((s, h) => s + (parseFloat(h.hours) || 0), 0);
+    }, [perms.logOwnHours, user.userId, todayStr]);
 
-    // Chart Data
-    const paymentModeData = [
-        { name: 'Cash', value: bills.reduce((sum, b) => sum + (b.payments?.filter(p => p.mode === 'Cash').reduce((s, p) => s + p.amount, 0) || 0), 0) },
-        { name: 'PhonePe', value: bills.reduce((sum, b) => sum + (b.payments?.filter(p => p.mode === 'PhonePe').reduce((s, p) => s + p.amount, 0) || 0), 0) },
-        { name: 'GPay', value: bills.reduce((sum, b) => sum + (b.payments?.filter(p => p.mode === 'GPay').reduce((s, p) => s + p.amount, 0) || 0), 0) },
-    ].filter(d => d.value > 0);
+    // Payments collected by this worker, sorted newest first
+    const myPayments = useMemo(() => {
+        if (!perms.recordPayment) return [];
+        return bills
+            .flatMap(b => (b.payments || []).map(p => ({
+                ...p,
+                customerName: b.customerName,
+                customerId: b.customerId,
+            })))
+            .filter(p => p.collectedBy === user.userId)
+            .sort((a, b) => (b.date || '') > (a.date || '') ? 1 : (b.date || '') < (a.date || '') ? -1 : 0);
+    }, [bills, perms.recordPayment, user.userId]);
 
-    const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
+    // Salary data
+    const mySalary = useMemo(() => {
+        if (!perms.viewOwnSalary) return null;
+        const users = storage.getUsers();
+        const myUser = users.find(u => u.id === user.userId);
+        if (!myUser) return null;
 
-    const revenueData = [
-        { name: 'Jan', tv: 4000, internet: 2400 },
-        { name: 'Feb', tv: 3000, internet: 1398 },
-        { name: 'Mar', tv: 2000, internet: 9800 },
-        { name: 'Apr', tv: 2780, internet: 3908 },
-    ];
+        const startDay = myUser.salaryStartDay || 1;
+        const today = new Date();
+        const curCycleStart = today.getDate() >= startDay
+            ? new Date(today.getFullYear(), today.getMonth(), startDay)
+            : new Date(today.getFullYear(), today.getMonth() - 1, startDay);
+        const cycleStartStr = curCycleStart.toLocaleDateString('en-CA');
+
+        const recs = storage.getSalary()
+            .filter(s => s.workerId === user.userId && !s.deleted)
+            .map(r => {
+                if (r.cashAmount !== undefined || r.type === 'advance') return r;
+                const amt = parseFloat(r.amount || 0);
+                const isDigital = r.paymentMode && r.paymentMode !== 'Cash';
+                return { ...r, type: 'salary', cashAmount: isDigital ? 0 : amt, digitalAmount: isDigital ? amt : 0, advanceDeduction: 0 };
+            });
+
+        const paidThisCycle = recs
+            .filter(r => r.type === 'salary' && (r.paymentDate || '') >= cycleStartStr)
+            .reduce((s, r) => s + (r.cashAmount || 0) + (r.digitalAmount || 0), 0);
+
+        const monthlySalary = parseFloat(myUser.monthlySalary) || 0;
+        const balanceDue = monthlySalary - paidThisCycle;
+        const totalAdv = recs.filter(r => r.type === 'advance').reduce((s, r) => s + (r.advanceAmount || 0), 0);
+        const totalAdvDed = recs.filter(r => r.type === 'salary').reduce((s, r) => s + (r.advanceDeduction || 0), 0);
+        const outstandingAdv = totalAdv - totalAdvDed;
+
+        return { monthlySalary, paidThisCycle, balanceDue, outstandingAdv, curCycleStart };
+    }, [perms.viewOwnSalary, user.userId]);
+
+    // Complaints
+    const myComplaints = useMemo(() => {
+        if (!perms.viewComplaints) return [];
+        return storage.getComplaints().filter(c => c.status !== 'Completed');
+    }, [perms.viewComplaints]);
+
+    const fmt = (n) => `₹${(n || 0).toLocaleString('en-IN')}`;
+    const todayCollected = myPayments.filter(p => p.date === todayStr).reduce((s, p) => s + (p.amount || 0), 0);
+    const totalCollected = myPayments.reduce((s, p) => s + (p.amount || 0), 0);
+
+    const getPaymentBadgeClass = (mode) => {
+        const m = mode?.toLowerCase();
+        if (m === 'cash') return 'payment-badge payment-badge-cash';
+        if (m === 'phonepe') return 'payment-badge payment-badge-phonepe';
+        if (m === 'gpay') return 'payment-badge payment-badge-gpay';
+        return 'payment-badge payment-badge-default';
+    };
 
     return (
         <div className="dashboard-page">
             <div className="section-header">
-                <h1>Dashboard</h1>
-                <div className="dashboard-header-actions">
-                    <div className="date-badge">
-                        <Clock size={16} />
-                        <span>Last Updated: {new Date().toLocaleTimeString()}</span>
-                    </div>
-                    <button className="btn-logout-inline" onClick={logout}>
-                        <LogOut size={16} /> Logout
-                    </button>
-                </div>
+                <h1>Welcome, {user.name?.split(' ')[0]}</h1>
             </div>
 
+            <div className="stats-grid" style={{ marginBottom: 28 }}>
+                {perms.logOwnHours && (
+                    <StatCard
+                        title="Hours Today"
+                        value={todayHours > 0 ? `${todayHours}h` : '—'}
+                        subtext={todayHours > 0 ? 'Logged today' : 'No hours logged yet'}
+                        icon={<Clock size={20} />}
+                        color="99, 102, 241"
+                        onClick={() => navigate('/work-hours')}
+                    />
+                )}
+                {perms.recordPayment && (
+                    <StatCard
+                        title="Collected Today"
+                        value={todayCollected > 0 ? fmt(todayCollected) : '—'}
+                        subtext={`${myPayments.filter(p => p.date === todayStr).length} payment${myPayments.filter(p => p.date === todayStr).length !== 1 ? 's' : ''} today`}
+                        icon={<CheckCircle size={20} />}
+                        color="16, 185, 129"
+                        onClick={() => navigate('/payments')}
+                    />
+                )}
+                {mySalary && (
+                    <>
+                        <StatCard
+                            title="Paid This Cycle"
+                            value={mySalary.paidThisCycle > 0 ? fmt(mySalary.paidThisCycle) : '—'}
+                            subtext={mySalary.monthlySalary > 0 ? `of ${fmt(mySalary.monthlySalary)}` : 'Salary not configured'}
+                            icon={<CheckCircle size={20} />}
+                            color="16, 185, 129"
+                            onClick={() => navigate('/salary')}
+                        />
+                        <StatCard
+                            title={mySalary.balanceDue > 0 ? 'Balance Due' : mySalary.balanceDue < 0 ? 'Excess Paid' : 'Salary Status'}
+                            value={mySalary.monthlySalary === 0 ? '—' : mySalary.balanceDue === 0 ? 'Paid ✓' : fmt(Math.abs(mySalary.balanceDue))}
+                            subtext={mySalary.outstandingAdv > 0 ? `Advance: ${fmt(mySalary.outstandingAdv)}` : 'No outstanding advance'}
+                            icon={<Banknote size={20} />}
+                            color={mySalary.balanceDue > 0 ? '248, 113, 113' : '16, 185, 129'}
+                            onClick={() => navigate('/salary')}
+                        />
+                    </>
+                )}
+                {perms.viewComplaints && (
+                    <StatCard
+                        title="Active Complaints"
+                        value={myComplaints.length}
+                        subtext="Pending resolution"
+                        icon={<HardHat size={20} />}
+                        color="245, 158, 11"
+                        onClick={() => navigate('/complaints')}
+                    />
+                )}
+            </div>
+
+            <div className="dashboard-bottom-grid" style={{ marginBottom: 24 }}>
+                {perms.viewComplaints && myComplaints.length > 0 && (
+                    <div className="card recent-activity">
+                        <h3>Active Complaints</h3>
+                        <div className="table-container no-border no-margin">
+                            <table className="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Customer</th>
+                                        <th>Issue</th>
+                                        <th>Date</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {myComplaints.slice(0, 8).map(c => (
+                                        <tr key={c.id} className="payment-row-clickable"
+                                            onClick={() => navigate('/complaints', { state: { openComplaintId: c.id } })}>
+                                            <td><strong>{c.customerName || '—'}</strong></td>
+                                            <td style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontSize: '0.82rem' }}>{c.description || '—'}</td>
+                                            <td style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
+                                                {c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}
+                                            </td>
+                                            <td>
+                                                <span className={`complaint-status-badge complaint-status-${(c.status || '').toLowerCase().replace(/\s+/g, '-')}`}>
+                                                    {c.status || '—'}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {perms.recordPayment && (
+                    <div className="card recent-activity">
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                            <h3 style={{ margin: 0 }}>Payments You Collected</h3>
+                            {totalCollected > 0 && (
+                                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#10b981' }}>
+                                    Total: {fmt(totalCollected)}
+                                </span>
+                            )}
+                        </div>
+                        {myPayments.length === 0 ? (
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', textAlign: 'center', padding: '12px 0' }}>No payments collected yet.</p>
+                        ) : (
+                            <div className="table-container no-border no-margin">
+                                <table className="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Customer</th>
+                                            <th>Amount</th>
+                                            <th>Mode</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {myPayments.slice(0, 30).map((p, i) => (
+                                            <tr key={p.id || i} className="payment-row-clickable"
+                                                onClick={() => navigate('/payments')}
+                                                style={p.date === todayStr ? { background: 'rgba(16,185,129,0.04)' } : {}}>
+                                                <td style={{ color: p.date === todayStr ? '#10b981' : 'var(--text-secondary)', fontSize: '0.82rem', whiteSpace: 'nowrap', fontWeight: p.date === todayStr ? 700 : 400 }}>
+                                                    {p.date ? new Date(p.date + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' }) : '—'}
+                                                    {p.date === todayStr ? ' · Today' : ''}
+                                                </td>
+                                                <td><strong>{p.customerName || '—'}</strong></td>
+                                                <td className="text-paid"><strong>₹{(p.amount || 0).toLocaleString('en-IN')}</strong></td>
+                                                <td>
+                                                    <span className={getPaymentBadgeClass(p.mode)}>{p.mode || '—'}</span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            <DashboardStyles />
+        </div>
+    );
+};
+
+/* ── Owner Dashboard ─────────────────────────────────────────── */
+const OwnerDashboard = ({ customers, bills, complaints, navigate }) => {
+    const thisMonthBills = bills.filter(b => b.generatedDate?.startsWith(new Date().toISOString().slice(0, 7)));
+    const totalCollected = thisMonthBills.reduce((sum, b) => sum + (b.amountPaid || 0), 0);
+    const totalOutstanding = bills.reduce((sum, b) => sum + (b.balance || 0), 0);
+    const activeComplaints = complaints.filter(c => c.status !== 'Completed').length;
+
+    const modeSum = (label) => bills.reduce((sum, b) =>
+        sum + (b.payments?.filter(p => p.mode?.toLowerCase() === label.toLowerCase()).reduce((s, p) => s + p.amount, 0) || 0), 0);
+    const paymentModeData = [
+        { name: 'Cash', value: modeSum('Cash') },
+        { name: 'PhonePe', value: modeSum('PhonePe') },
+        { name: 'GPay', value: modeSum('GPay') },
+    ].filter(d => d.value > 0);
+
+    const COLORS = ['#10b981', '#6366f1', '#06b6d4', '#f59e0b'];
+
+    const revenueData = (() => {
+        const months = [];
+        for (let i = 5; i >= 0; i--) {
+            const d = new Date();
+            d.setMonth(d.getMonth() - i);
+            const key = d.toISOString().slice(0, 7);
+            const label = d.toLocaleDateString('en-IN', { month: 'short' });
+            const monthBills = bills.filter(b => (b.generatedDate || '').startsWith(key));
+            months.push({
+                name: label,
+                tv: monthBills.reduce((s, b) => s + (b.tvAmount || 0), 0),
+                internet: monthBills.reduce((s, b) => s + (b.internetAmount || 0), 0),
+            });
+        }
+        return months;
+    })();
+
+    const recentPayments = bills
+        .flatMap(b => (b.payments || []).map(p => ({ ...p, customerName: b.customerName, customerId: b.customerId, billNumber: b.billNumber })))
+        .sort((a, b) => new Date(b.date + 'T' + (b.createdAt || '00:00')) - new Date(a.date + 'T' + (a.createdAt || '00:00')))
+        .slice(0, 6);
+
+    const getComplaintCustomerName = (c) =>
+        customers.find(cu => String(cu.id) === String(c.customerId))?.name || c.customerName || '—';
+
+    const recentComplaints = [...complaints]
+        .filter(c => c.status !== 'Completed')
+        .sort((a, b) => new Date(b.createdAt || b.date || 0) - new Date(a.createdAt || a.date || 0))
+        .slice(0, 6);
+
+    const getPaymentBadgeClass = (mode) => {
+        const m = mode?.toLowerCase();
+        if (m === 'cash') return 'payment-badge payment-badge-cash';
+        if (m === 'phonepe') return 'payment-badge payment-badge-phonepe';
+        if (m === 'gpay') return 'payment-badge payment-badge-gpay';
+        return 'payment-badge payment-badge-default';
+    };
+
+    return (
+        <>
             <div className="stats-grid">
                 <StatCard
-                    title="Collected (This Month)"
+                    title="Collected This Month"
                     value={`₹${totalCollected.toLocaleString('en-IN')}`}
                     subtext="Revenue from bills"
-                    icon={<TrendingUp />}
+                    icon={<TrendingUp size={20} />}
                     trend="up"
                     trendValue="12.5"
                     color="16, 185, 129"
+                    onClick={() => navigate('/billing')}
                 />
                 <StatCard
                     title="Total Outstanding"
                     value={`₹${totalOutstanding.toLocaleString('en-IN')}`}
                     subtext="Unpaid balances"
-                    icon={<IndianRupee />}
+                    icon={<IndianRupee size={20} />}
                     trend="down"
                     trendValue="4.2"
                     color="248, 113, 113"
+                    onClick={() => navigate('/payments', { state: { tab: 'pending' } })}
                 />
                 <StatCard
                     title="Total Customers"
                     value={customers.length}
                     subtext="Active households"
-                    icon={<Users />}
+                    icon={<Users size={20} />}
                     color="59, 130, 246"
+                    onClick={() => navigate('/customers')}
                 />
                 <StatCard
                     title="Active Complaints"
                     value={activeComplaints}
                     subtext="Pending resolution"
-                    icon={<AlertCircle />}
+                    icon={<AlertCircle size={20} />}
                     color="245, 158, 11"
+                    onClick={() => navigate('/complaints')}
                 />
             </div>
 
             <div className="dashboard-charts">
                 <div className="card chart-card">
                     <h3>Payment Mode Split</h3>
-                    <div className="chart-container">
-                        <ResponsiveContainer width="100%" height={300}>
-                            <PieChart>
-                                <Pie
-                                    data={paymentModeData.length > 0 ? paymentModeData : [{ name: 'No Data', value: 1 }]}
-                                    cx="50%" cy="50%"
-                                    innerRadius={60}
-                                    outerRadius={80}
-                                    paddingAngle={5}
-                                    dataKey="value"
-                                >
-                                    {paymentModeData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                    ))}
-                                </Pie>
-                                <Tooltip />
-                                <Legend />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
+                    <ResponsiveContainer width="100%" height={280}>
+                        <PieChart>
+                            <Pie
+                                data={paymentModeData.length > 0 ? paymentModeData : [{ name: 'No Data', value: 1 }]}
+                                cx="50%" cy="50%"
+                                innerRadius={65}
+                                outerRadius={88}
+                                paddingAngle={4}
+                                dataKey="value"
+                            >
+                                {paymentModeData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                            </Pie>
+                            <Tooltip
+                                contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '10px', fontSize: '13px' }}
+                            />
+                            <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
+                        </PieChart>
+                    </ResponsiveContainer>
                 </div>
 
-                <div className="card chart-card wide">
-                    <h3>Revenue Trend (TV vs Internet)</h3>
-                    <div className="chart-container">
-                        <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={revenueData}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-                                <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
-                                <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v}`} />
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
-                                    itemStyle={{ fontSize: '12px' }}
-                                />
-                                <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
-                                <Bar dataKey="tv" name="Cable TV" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                                <Bar dataKey="internet" name="Internet" fill="#a855f7" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-            </div>
-
-            <div className="card recent-activity">
-                <h3>Recent Bills</h3>
-                <div className="table-container no-border no-margin">
-                    <table className="data-table">
-                        <thead>
-                            <tr>
-                                <th>Customer</th>
-                                <th>Bill #</th>
-                                <th>Amount</th>
-                                <th>Status</th>
-                                <th>Generated By</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {bills.length === 0 ? (
-                                <tr><td colSpan="5" className="text-center">No recent bills.</td></tr>
-                            ) : (
-                                bills.slice(-5).reverse().map(b => (
-                                    <tr key={b.id}>
-                                        <td><strong>{b.customerName}</strong></td>
-                                        <td>#{b.billNumber}</td>
-                                        <td className="text-total">₹{b.totalAmount}</td>
-                                        <td><span className={`status-pill status-${b.status.toLowerCase()}`}>{b.status}</span></td>
-                                        <td>{b.generatedByName}</td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
+                <div className="card chart-card">
+                    <h3>Revenue Trend — TV vs Internet</h3>
+                    <ResponsiveContainer width="100%" height={280}>
+                        <BarChart data={revenueData} barGap={4}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                            <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                            <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v}`} />
+                            <Tooltip
+                                contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '10px' }}
+                                itemStyle={{ fontSize: '12px' }}
+                                cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+                            />
+                            <Legend iconType="circle" wrapperStyle={{ paddingTop: '16px', fontSize: '12px' }} />
+                            <Bar dataKey="tv" name="Cable TV" fill="#3b82f6" radius={[5, 5, 0, 0]} maxBarSize={32} />
+                            <Bar dataKey="internet" name="Internet" fill="#a855f7" radius={[5, 5, 0, 0]} maxBarSize={32} />
+                        </BarChart>
+                    </ResponsiveContainer>
                 </div>
             </div>
 
-            <style>{`
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 24px; margin-bottom: 32px; }
-        .stat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; }
-        .stat-card-main { display: flex; justify-content: space-between; align-items: flex-start; }
-        .stat-title { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
-        .stat-value { font-size: 1.8rem; font-weight: 800; color: var(--text-primary); margin-bottom: 4px; }
-        .stat-subtext { font-size: 0.75rem; color: var(--text-secondary); }
-        .stat-icon-wrapper { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
-        .stat-trend { display: flex; align-items: center; gap: 4px; font-size: 0.75rem; margin-top: 16px; font-weight: 600; }
-        .stat-trend.up { color: #10b981; }
-        .stat-trend.down { color: #f87171; }
-        
-        .dashboard-charts { display: grid; grid-template-columns: 1fr 2fr; gap: 24px; margin-bottom: 32px; }
-        .chart-card h3 { margin-bottom: 24px; font-size: 1rem; color: var(--text-primary); }
-        .no-border { border: none; }
-        .no-margin { margin: 0; }
-        
-        .date-badge { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--text-secondary); background: var(--bg-card); padding: 8px 16px; border-radius: 20px; border: 1px solid var(--border); }
-        
-        @media (max-width: 1200px) { .dashboard-charts { grid-template-columns: 1fr; } }
-      `}</style>
+            <div className="dashboard-bottom-grid">
+                {/* Recent Payments */}
+                <div className="card recent-activity">
+                    <h3>Recent Payments</h3>
+                    <div className="table-container no-border no-margin">
+                        <table className="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Customer</th>
+                                    <th>Amount</th>
+                                    <th>Mode</th>
+                                    <th>Date</th>
+                                    <th>Collected By</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {recentPayments.length === 0 ? (
+                                    <tr><td colSpan="5" className="text-center">No payments yet.</td></tr>
+                                ) : (
+                                    recentPayments.map(p => (
+                                        <tr
+                                            key={p.id}
+                                            className="payment-row-clickable"
+                                            onClick={() => navigate('/payments', { state: { customerId: p.customerId } })}
+                                        >
+                                            <td><strong>{p.customerName}</strong></td>
+                                            <td className="text-paid">₹{p.amount?.toLocaleString('en-IN')}</td>
+                                            <td>
+                                                <span className={getPaymentBadgeClass(p.mode)}>
+                                                    {p.mode}
+                                                </span>
+                                            </td>
+                                            <td style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
+                                                {new Date(p.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                                            </td>
+                                            <td style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>{p.collectedByName || '—'}</td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {/* Recent Complaints */}
+                <div className="card recent-activity">
+                    <h3>Recent Complaints</h3>
+                    <div className="table-container no-border no-margin">
+                        <table className="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Customer</th>
+                                    <th>Issue</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {recentComplaints.length === 0 ? (
+                                    <tr><td colSpan="4" className="text-center">No complaints yet.</td></tr>
+                                ) : (
+                                    recentComplaints.map(c => (
+                                        <tr
+                                            key={c.id}
+                                            className="payment-row-clickable"
+                                            onClick={() => navigate('/complaints', { state: { openComplaintId: c.id } })}
+                                        >
+                                            <td><strong>{getComplaintCustomerName(c)}</strong></td>
+                                            <td style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontSize: '0.82rem' }}>{c.description || '—'}</td>
+                                            <td style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
+                                                {c.createdAt || c.date ? new Date(c.createdAt || c.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}
+                                            </td>
+                                            <td>
+                                                <span className={`complaint-status-badge complaint-status-${(c.status || '').toLowerCase().replace(/\s+/g, '-')}`}>
+                                                    {c.status || '—'}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </>
+    );
+};
+
+/* ── Shared styles ───────────────────────────────────────────── */
+const DashboardStyles = () => (
+    <style>{`
+/* ── Stat cards ── */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 16px; margin-bottom: 28px;
+}
+.stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 22px 20px;
+    position: relative; overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.stat-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--card-color);
+    opacity: 0.8;
+}
+.stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.25); }
+.stat-card.clickable { cursor: pointer; }
+.stat-card.clickable:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(0,0,0,0.3); }
+.stat-card-arrow {
+    font-size: 0.85rem; font-weight: 700;
+    color: var(--card-color); opacity: 0.6;
+    transition: opacity 0.2s, transform 0.2s;
+    display: inline-block;
+}
+.stat-card.clickable:hover .stat-card-arrow { opacity: 1; transform: translateX(3px); }
+
+.stat-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.stat-icon-wrap {
+    width: 44px; height: 44px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--card-color-alpha);
+    color: var(--card-color);
+    flex-shrink: 0;
+}
+.stat-trend {
+    display: flex; align-items: center; gap: 2px;
+    font-size: 0.72rem; font-weight: 700; padding: 3px 8px;
+    border-radius: 20px;
+}
+.stat-trend.up { background: rgba(16,185,129,0.12); color: #10b981; }
+.stat-trend.down { background: rgba(239,68,68,0.1); color: #f87171; }
+
+.stat-value {
+    font-size: 1.9rem; font-weight: 800;
+    color: var(--text-primary); line-height: 1; margin-bottom: 6px;
+}
+.stat-title {
+    font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--card-color); margin-bottom: 3px;
+}
+.stat-subtext { font-size: 0.74rem; color: var(--text-secondary); }
+
+/* ── Charts ── */
+.dashboard-charts {
+    display: grid; grid-template-columns: 1fr 2fr;
+    gap: 20px; margin-bottom: 28px;
+}
+.chart-card { padding: 22px; }
+.chart-card h3 {
+    font-size: 0.75rem; font-weight: 800; text-transform: uppercase;
+    letter-spacing: 0.07em; color: var(--text-secondary); margin-bottom: 20px;
+}
+
+/* ── Bottom grid (payments + complaints side by side) ── */
+.dashboard-bottom-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+@media (max-width: 1000px) { .dashboard-bottom-grid { grid-template-columns: 1fr; } }
+
+/* ── Recent panels ── */
+.recent-activity { padding: 22px; }
+.recent-activity h3 {
+    font-size: 0.75rem; font-weight: 800; text-transform: uppercase;
+    letter-spacing: 0.07em; color: var(--text-secondary); margin-bottom: 16px;
+}
+.no-border { border: none; }
+.no-margin { margin: 0; }
+
+/* ── Complaint status badges ── */
+.complaint-status-badge {
+    font-size: 0.65rem; font-weight: 700; padding: 2px 8px;
+    border-radius: 20px; text-transform: uppercase; letter-spacing: 0.03em;
+    border: 1px solid; white-space: nowrap;
+}
+.complaint-status-pending { background: rgba(245,158,11,0.1); color: #f59e0b; border-color: rgba(245,158,11,0.3); }
+.complaint-status-in-progress { background: rgba(99,102,241,0.1); color: #6366f1; border-color: rgba(99,102,241,0.3); }
+.complaint-status-completed { background: rgba(16,185,129,0.1); color: #10b981; border-color: rgba(16,185,129,0.3); }
+.complaint-status-open { background: rgba(248,113,113,0.1); color: #f87171; border-color: rgba(248,113,113,0.3); }
+
+.payment-badge {
+    font-size: 0.65rem; font-weight: 700; padding: 2px 8px;
+    border-radius: 20px; text-transform: uppercase; letter-spacing: 0.03em;
+    border: 1px solid;
+}
+.payment-badge-cash { background: rgba(16,185,129,0.1); color: #10b981; border-color: rgba(16,185,129,0.3); }
+.payment-badge-phonepe { background: rgba(99,102,241,0.1); color: #6366f1; border-color: rgba(99,102,241,0.3); }
+.payment-badge-gpay { background: rgba(6,182,212,0.1); color: #06b6d4; border-color: rgba(6,182,212,0.3); }
+.payment-badge-default { background: rgba(255,255,255,0.08); color: var(--text-secondary); border-color: var(--border); }
+
+.payment-row-clickable { cursor: pointer; transition: background 0.15s; }
+.payment-row-clickable:hover { background: rgba(255,255,255,0.04); }
+
+/* ── Page wrapper ── */
+.dashboard-page { padding: 28px 32px; }
+
+/* ── Responsive ── */
+@media (max-width: 1200px) { .dashboard-charts { grid-template-columns: 1fr; } }
+@media (max-width: 768px) {
+    .dashboard-page { padding: 14px 12px; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+    .stat-card { padding: 14px 12px; border-radius: 14px; }
+    .stat-value { font-size: 1.35rem; }
+    .stat-icon-wrap { width: 36px; height: 36px; border-radius: 10px; }
+    .dashboard-charts { gap: 12px; margin-bottom: 16px; }
+    .chart-card { padding: 14px; }
+    .chart-card h3 { margin-bottom: 12px; }
+    .chart-card .recharts-wrapper,
+    .chart-card .recharts-responsive-container { height: 180px !important; min-height: unset !important; }
+    .recent-activity { padding: 14px; }
+    .recent-activity h3 { margin-bottom: 10px; }
+    .dashboard-bottom-grid { gap: 12px; }
+    .data-table th, .data-table td { padding: 8px 10px; font-size: 0.78rem; }
+}
+@media (max-width: 480px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .stat-card { padding: 12px 10px; }
+    .stat-value { font-size: 1.15rem; }
+    .stat-subtext { font-size: 0.68rem; }
+}
+    `}</style>
+);
+
+/* ── Dashboard (router) ──────────────────────────────────────── */
+const Dashboard = () => {
+    const { customers, bills, complaints } = useData();
+    const { user } = useAuth();
+    const navigate = useNavigate();
+
+    const isOwner = user?.role?.toLowerCase() === 'owner';
+
+    if (!isOwner) {
+        return <WorkerDashboard user={user} navigate={navigate} bills={bills} />;
+    }
+
+    return (
+        <div className="dashboard-page">
+            <div className="section-header">
+                <h1>Dashboard</h1>
+            </div>
+            <OwnerDashboard customers={customers} bills={bills} complaints={complaints} navigate={navigate} />
+            <DashboardStyles />
         </div>
     );
 };

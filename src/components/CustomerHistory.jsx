@@ -1,94 +1,254 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useData } from '../context/DataContext';
-import { IndianRupee, Calendar, CheckCircle2, Clock } from 'lucide-react';
+import { Receipt, Banknote, ChevronDown, ChevronUp } from 'lucide-react';
+import { BillDetailModal } from './BillList';
+
+const PAGE_SIZE = 10;
 
 const CustomerHistory = ({ customerId }) => {
-    const { bills } = useData();
+    const { bills, users } = useData();
     const customerBills = bills.filter(b => b.customerId === customerId);
+    const [tab, setTab] = useState('bills');
+    const [expandedBill, setExpandedBill] = useState(null);
+    const [selectedBill, setSelectedBill] = useState(null);
+    const [billPage, setBillPage] = useState(1);
+    const [payPage, setPayPage] = useState(1);
+
+    const getUserName = (userId) => users?.find(u => u.userId === userId)?.name || userId || '—';
+
+    const sortedBills = [...customerBills].sort((a, b) => new Date(b.generatedDate) - new Date(a.generatedDate));
+    const allPayments = customerBills
+        .flatMap(b => (b.payments || []).map(p => ({ ...p, billNumber: b.billNumber, billId: b.id })))
+        .sort((a, z) => new Date(z.date) - new Date(a.date));
+
+    const billTotalPages = Math.ceil(sortedBills.length / PAGE_SIZE);
+    const payTotalPages = Math.ceil(allPayments.length / PAGE_SIZE);
+    const pagedBills = sortedBills.slice((billPage - 1) * PAGE_SIZE, billPage * PAGE_SIZE);
+    const pagedPayments = allPayments.slice((payPage - 1) * PAGE_SIZE, payPage * PAGE_SIZE);
+
+    const modeBadge = (mode) => {
+        if (!mode) return null;
+        const m = mode.toLowerCase();
+        const cls = m.includes('phonepe') ? 'mode-phonepe' : m.includes('gpay') || m.includes('google') ? 'mode-gpay' : 'mode-cash';
+        return <span className={`ch-mode-badge ${cls}`}>{mode}</span>;
+    };
 
     if (!customerBills || customerBills.length === 0) {
-        return (
-            <div className="no-history">
-                <p>No billing history found for this customer.</p>
-            </div>
-        );
+        return <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', padding: '8px 0' }}>No billing history yet.</p>;
     }
 
     return (
         <div className="customer-history">
-            <div className="history-summary-cards">
-                <div className="summary-card total">
-                    <IndianRupee size={20} />
-                    <div>
-                        <span>Total Billed</span>
-                        <h3>₹{customerBills.reduce((sum, b) => sum + b.totalAmount, 0)}</h3>
-                    </div>
-                </div>
-                <div className="summary-card paid">
-                    <CheckCircle2 size={20} />
-                    <div>
-                        <span>Total Paid</span>
-                        <h3>₹{customerBills.reduce((sum, b) => sum + (b.amountPaid || 0), 0)}</h3>
-                    </div>
-                </div>
-                <div className="summary-card due">
-                    <Clock size={20} />
-                    <div>
-                        <span>Current Due</span>
-                        <h3>₹{customerBills.reduce((sum, b) => sum + b.balance, 0)}</h3>
-                    </div>
-                </div>
+
+            {/* Tab switcher */}
+            <div className="ch-tabs">
+                <button className={`ch-tab ${tab === 'bills' ? 'active' : ''}`} onClick={() => setTab('bills')}>
+                    <Receipt size={13} /> Bills <span className="ch-tab-count">{customerBills.length}</span>
+                </button>
+                <button className={`ch-tab ${tab === 'payments' ? 'active' : ''}`} onClick={() => setTab('payments')}>
+                    <Banknote size={13} /> Payments <span className="ch-tab-count">{allPayments.length}</span>
+                </button>
             </div>
 
-            <div className="table-container mt-24">
-                <table className="data-table">
-                    <thead>
-                        <tr>
-                            <th>Month/Year</th>
-                            <th>Bill Date</th>
-                            <th>Total Amount</th>
-                            <th>Paid Amount</th>
-                            <th>Balance</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {[...customerBills].reverse().map(b => {
-                            const date = new Date(b.generatedDate);
-                            const monthYear = date.toLocaleString('default', { month: 'long', year: 'numeric' });
+            {/* ── Bills tab ── */}
+            {tab === 'bills' && (
+                <>
+                <div style={{ overflowX: 'auto', width: '100%' }}>
+                    <table className="data-table ch-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Bill #</th>
+                                <th>Date</th>
+                                <th>Service</th>
+                                <th>Total</th>
+                                <th>Paid</th>
+                                <th>Balance</th>
+                                <th>Generated By</th>
+                                <th>Status</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {pagedBills.map((b, idx) => {
+                                const date = new Date(b.generatedDate);
+                                const isExpanded = expandedBill === b.id;
+                                const hasPayments = b.payments && b.payments.length > 0;
+                                const paid = (b.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
+                                const rowNum = (billPage - 1) * PAGE_SIZE + idx + 1;
 
-                            return (
-                                <tr key={b.id}>
-                                    <td><strong>{monthYear}</strong></td>
-                                    <td>{date.toLocaleDateString()}</td>
-                                    <td>₹{b.totalAmount}</td>
-                                    <td className="text-paid">₹{b.amountPaid || 0}</td>
-                                    <td className={b.balance > 0 ? 'text-due' : 'text-paid'}>₹{b.balance}</td>
-                                    <td>
-                                        <span className={`status-pill status-${b.status.toLowerCase()}`}>
-                                            {b.status}
-                                        </span>
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
-            </div>
+                                return (
+                                    <React.Fragment key={b.id}>
+                                        <tr className={isExpanded ? 'ch-row-expanded' : ''}>
+                                            <td className="ch-row-num">{rowNum}</td>
+                                            <td><span className="ch-bill-num">#{b.billNumber}</span></td>
+                                            <td style={{ whiteSpace: 'nowrap' }}>{date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                                            <td style={{ whiteSpace: 'nowrap' }}>
+                                                {b.serviceType === 'tv' && <span className="ch-svc ch-svc-tv">TV</span>}
+                                                {b.serviceType === 'internet' && <span className="ch-svc ch-svc-net">Internet</span>}
+                                                {b.serviceType === 'both' && <><span className="ch-svc ch-svc-tv">TV</span><span className="ch-svc ch-svc-net">Net</span></>}
+                                            </td>
+                                            <td style={{ whiteSpace: 'nowrap', fontWeight: 700 }}>₹{b.totalAmount.toLocaleString('en-IN')}</td>
+                                            <td style={{ whiteSpace: 'nowrap', color: '#10b981', fontWeight: 600 }}>₹{paid.toLocaleString('en-IN')}</td>
+                                            <td className={b.balance > 0 ? 'text-due' : 'text-paid'} style={{ whiteSpace: 'nowrap', fontWeight: 700 }}>₹{b.balance.toLocaleString('en-IN')}</td>
+                                            <td style={{ whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontSize: '0.82rem' }}>{getUserName(b.generatedBy)}</td>
+                                            <td><span className={`status-pill status-${b.status.toLowerCase()}`}>{b.status}</span></td>
+                                            <td>
+                                                {hasPayments && (
+                                                    <button className="ch-expand-btn" onClick={() => setExpandedBill(isExpanded ? null : b.id)}>
+                                                        {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                                                        {b.payments.length} paid
+                                                    </button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                        {isExpanded && hasPayments && (
+                                            <tr className="ch-payment-row">
+                                                <td colSpan={10} style={{ padding: 0 }}>
+                                                    <div className="ch-payment-log">
+                                                        {[...b.payments].sort((a, z) => new Date(z.date) - new Date(a.date)).map(p => (
+                                                            <div key={p.id} className="ch-payment-entry">
+                                                                <div className="ch-payment-dot" />
+                                                                <div className="ch-payment-amt">₹{p.amount.toLocaleString('en-IN')}</div>
+                                                                {modeBadge(p.mode)}
+                                                                <span className="ch-payment-meta">
+                                                                    {new Date(p.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                                    {p.collectedByName && ` · ${p.collectedByName}`}
+                                                                    {p.billBookNumber && ` · Book #${p.billBookNumber}`}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </React.Fragment>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+                {billTotalPages > 1 && (
+                    <div className="ch-pagination">
+                        <button className="ch-page-btn" disabled={billPage === 1} onClick={() => setBillPage(p => p - 1)}>‹ Prev</button>
+                        <span className="ch-page-info">Page {billPage} of {billTotalPages}</span>
+                        <button className="ch-page-btn" disabled={billPage === billTotalPages} onClick={() => setBillPage(p => p + 1)}>Next ›</button>
+                    </div>
+                )}
+                </>
+            )}
+
+            {/* ── Payments tab ── */}
+            {tab === 'payments' && (
+                <>
+                <div className="ch-txn-list">
+                    {allPayments.length === 0 ? (
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', padding: '16px 0' }}>No payments recorded yet.</p>
+                    ) : pagedPayments.map(p => (
+                        <div key={p.id} className="ch-txn-row"
+                            onClick={() => { const bill = customerBills.find(b => b.id === p.billId); if (bill) setSelectedBill(bill); }}>
+                            <div className="ch-txn-icon"><Banknote size={16} /></div>
+                            <div className="ch-txn-details">
+                                <div className="ch-txn-top">
+                                    <span className="ch-txn-amt">₹{p.amount.toLocaleString('en-IN')}</span>
+                                    {modeBadge(p.mode)}
+                                </div>
+                                <div className="ch-txn-meta">
+                                    {new Date(p.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                    {p.collectedByName && ` · Collected by ${p.collectedByName}`}
+                                    {p.billBookNumber && ` · Book #${p.billBookNumber}`}
+                                </div>
+                            </div>
+                            <span className="ch-txn-bill">Bill #{p.billNumber}</span>
+                        </div>
+                    ))}
+                </div>
+                {payTotalPages > 1 && (
+                    <div className="ch-pagination">
+                        <button className="ch-page-btn" disabled={payPage === 1} onClick={() => setPayPage(p => p - 1)}>‹ Prev</button>
+                        <span className="ch-page-info">Page {payPage} of {payTotalPages}</span>
+                        <button className="ch-page-btn" disabled={payPage === payTotalPages} onClick={() => setPayPage(p => p + 1)}>Next ›</button>
+                    </div>
+                )}
+                </>
+            )}
+
+            {selectedBill && <BillDetailModal bill={selectedBill} onClose={() => setSelectedBill(null)} />}
 
             <style>{`
-                .customer-history { padding: 10px 0; }
-                .history-summary-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
-                .summary-card { 
-                    background: var(--bg-card); border: 1px solid var(--border); 
-                    padding: 16px; border-radius: 12px; display: flex; align-items: center; gap: 12px;
+                .customer-history { padding: 4px 0; }
+
+                /* Tabs */
+                .ch-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+                .ch-tab {
+                    display: inline-flex; align-items: center; gap: 5px;
+                    padding: 7px 16px; border-radius: 10px; font-size: 0.8rem; font-weight: 600;
+                    border: 1px solid var(--border); background: none;
+                    color: var(--text-secondary); cursor: pointer; transition: all 0.18s;
+                    font-family: inherit;
                 }
-                .summary-card span { font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; }
-                .summary-card h3 { font-size: 1.25rem; font-weight: 700; }
-                .summary-card.total { border-left: 4px solid var(--accent); }
-                .summary-card.paid { border-left: 4px solid #10b981; }
-                .summary-card.due { border-left: 4px solid #ef4444; }
-                .mt-24 { margin-top: 24px; }
+                .ch-tab:hover { color: var(--text-primary); border-color: var(--border-bright); }
+                .ch-tab.active { border-color: var(--accent); color: var(--accent); background: rgba(99,102,241,0.08); }
+                .ch-tab-count {
+                    background: rgba(255,255,255,0.08); border-radius: 20px;
+                    padding: 1px 7px; font-size: 0.68rem; font-weight: 700;
+                }
+                .ch-tab.active .ch-tab-count { background: rgba(99,102,241,0.2); }
+
+                /* Table */
+                .ch-table { width: 100%; }
+                .ch-row-num { color: var(--text-secondary); font-size: 0.78rem; width: 32px; }
+
+                /* Bill number & service badges */
+                .ch-bill-num { font-family: monospace; font-size: 0.78rem; color: var(--text-secondary); white-space: nowrap; }
+                .ch-svc { display: inline-flex; font-size: 0.65rem; font-weight: 700; padding: 1px 6px; border-radius: 4px; margin-right: 2px; white-space: nowrap; }
+                .ch-svc-tv { background: rgba(168,85,247,0.15); color: #a855f7; }
+                .ch-svc-net { background: rgba(6,182,212,0.15); color: #06b6d4; }
+
+                /* Mode badges */
+                .ch-mode-badge { font-size: 0.68rem; font-weight: 700; padding: 2px 7px; border-radius: 5px; white-space: nowrap; }
+                .mode-cash { background: rgba(16,185,129,0.12); color: #10b981; border: 1px solid rgba(16,185,129,0.25); }
+                .mode-phonepe { background: rgba(99,102,241,0.12); color: #818cf8; border: 1px solid rgba(99,102,241,0.25); }
+                .mode-gpay { background: rgba(6,182,212,0.12); color: #22d3ee; border: 1px solid rgba(6,182,212,0.25); }
+
+                /* Bill row expand */
+                .ch-expand-btn {
+                    display: inline-flex; align-items: center; gap: 4px;
+                    background: none; border: 1px solid var(--border); border-radius: 6px;
+                    color: var(--text-secondary); font-size: 0.7rem; font-weight: 600;
+                    padding: 3px 8px; cursor: pointer; transition: all 0.18s; font-family: inherit;
+                    white-space: nowrap;
+                }
+                .ch-expand-btn:hover { color: #10b981; border-color: #10b981; }
+                .ch-row-expanded td { background: rgba(16,185,129,0.03); }
+                .ch-payment-row td { background: rgba(16,185,129,0.03); border-top: none; }
+                .ch-payment-log { padding: 10px 20px 14px 32px; display: flex; flex-direction: column; gap: 8px; }
+                .ch-payment-entry { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+                .ch-payment-dot { width: 7px; height: 7px; border-radius: 50%; background: #10b981; flex-shrink: 0; }
+                .ch-payment-amt { font-size: 0.88rem; font-weight: 700; color: #10b981; }
+                .ch-payment-meta { font-size: 0.75rem; color: var(--text-secondary); }
+
+                /* Payment transactions list */
+                .ch-txn-list { display: flex; flex-direction: column; gap: 8px; }
+                .ch-txn-row {
+                    display: flex; align-items: center; gap: 12px;
+                    background: rgba(16,185,129,0.04); border: 1px solid rgba(16,185,129,0.14);
+                    border-radius: 12px; padding: 12px 14px; cursor: pointer; transition: all 0.18s;
+                }
+                .ch-txn-row:hover { background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.3); }
+                .ch-txn-icon { color: #10b981; flex-shrink: 0; }
+                .ch-txn-details { flex: 1; min-width: 0; }
+                .ch-txn-top { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; }
+                .ch-txn-amt { font-weight: 800; font-size: 1rem; color: #10b981; }
+                .ch-txn-meta { font-size: 0.76rem; color: var(--text-secondary); }
+                .ch-txn-bill { font-size: 0.72rem; font-weight: 700; color: var(--text-secondary); white-space: nowrap; background: rgba(255,255,255,0.05); border: 1px solid var(--border); padding: 3px 9px; border-radius: 6px; flex-shrink: 0; }
+
+                /* Pagination */
+                .ch-pagination { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 14px; }
+                .ch-page-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 8px; color: var(--text-secondary); font-size: 0.8rem; font-weight: 600; padding: 6px 14px; cursor: pointer; font-family: inherit; transition: all 0.18s; }
+                .ch-page-btn:hover:not(:disabled) { color: var(--text-primary); border-color: var(--border-bright); }
+                .ch-page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+                .ch-page-info { font-size: 0.78rem; color: var(--text-secondary); }
             `}</style>
         </div>
     );
