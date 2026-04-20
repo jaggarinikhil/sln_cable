@@ -4,22 +4,122 @@ export const generateWhatsAppLink = (phone, message) => {
     return `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`;
 };
 
-export const formatBillMessage = (bill) => {
-    const date = new Date(bill.generatedDate).toLocaleDateString('en-IN');
-    return `*SLN Cable & Internet Services*\n\n` +
-        `Dear *${bill.customerName}*,\n\n` +
-        `Your bill for ${date} has been generated.\n` +
-        `*Bill No:* #${bill.billNumber}\n` +
-        `*Total Amount:* ₹${bill.totalAmount}\n` +
-        `*Paid Amount:* ₹${bill.amountPaid || 0}\n` +
-        `*Balance Due:* ₹${bill.balance}\n\n` +
-        `Thank you for using our services!`;
+const fmtAmt = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
+
+const serviceLabel = (type) => {
+    if (type === 'both') return 'Cable TV + Internet';
+    if (type === 'tv') return 'Cable TV';
+    if (type === 'internet') return 'Internet';
+    return 'Cable Services';
 };
 
-export const formatPaymentMessage = (customerName, amount, balance) => {
+const billMonthLabel = (dateStr) => {
+    try {
+        const d = new Date(dateStr + 'T00:00:00');
+        return d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+    } catch { return ''; }
+};
+
+export const formatBillMessage = (bill) => {
+    const month = billMonthLabel(bill.generatedDate);
+    const dateStr = new Date(bill.generatedDate + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    const total = bill.totalAmount || 0;
+    const paid = bill.amountPaid || 0;
+    const balance = bill.balance ?? (total - paid);
+    const status = bill.status || (balance <= 0 ? 'Paid' : paid > 0 ? 'Partial' : 'Due');
+    const payCount = (bill.payments || []).length;
+
+    // Service amount breakdown
+    let serviceBreakdown = '';
+    if (bill.serviceType === 'both' && bill.tvAmount && bill.internetAmount) {
+        serviceBreakdown = `   📺 Cable TV : ${fmtAmt(bill.tvAmount)}\n   🌐 Internet  : ${fmtAmt(bill.internetAmount)}\n`;
+    }
+
+    // Balance by service (for both-type bills)
+    let balanceBreakdown = '';
+    if (balance > 0 && bill.serviceType === 'both' && bill.tvAmount && bill.internetAmount) {
+        const tvBal = Math.round(balance * (bill.tvAmount / total));
+        const netBal = balance - tvBal;
+        balanceBreakdown = `   📺 TV due      : ${fmtAmt(tvBal)}\n   🌐 Internet due: ${fmtAmt(netBal)}\n`;
+    }
+
+    // Status line
+    let statusLine = '';
+    if (status === 'Paid' || balance <= 0) {
+        statusLine = `✅ *STATUS: FULLY PAID*`;
+    } else if (paid > 0) {
+        statusLine = `⚠️ *STATUS: PARTIAL — ${payCount} payment${payCount > 1 ? 's' : ''} made*`;
+    } else {
+        statusLine = `🔴 *STATUS: PAYMENT DUE*`;
+    }
+
     return `*SLN Cable & Internet Services*\n\n` +
-        `Dear *${customerName}*,\n\n` +
-        `We have received your payment of *₹${amount}*.\n` +
-        `*Current Balance:* ₹${balance}\n\n` +
-        `Thank you!`;
+        `Dear *${bill.customerName}*,\n\n` +
+        `Your bill for *${month}* has been generated.\n\n` +
+        `📋 *Bill No :* #${bill.billNumber}\n` +
+        `📅 *Date    :* ${dateStr}\n` +
+        `📡 *Service :* ${serviceLabel(bill.serviceType)}\n\n` +
+        `━━━━━━━━━━━━━━━━━━━\n` +
+        `💰 *Bill Summary:*\n` +
+        serviceBreakdown +
+        `   Total Amount : *${fmtAmt(total)}*\n` +
+        `   Amount Paid  : ${fmtAmt(paid)}\n` +
+        `   Balance Due  : *${fmtAmt(Math.max(0, balance))}*\n` +
+        (balanceBreakdown ? balanceBreakdown : '') +
+        `━━━━━━━━━━━━━━━━━━━\n\n` +
+        statusLine + `\n\n` +
+        (balance > 0
+            ? `Please pay the balance at your earliest convenience.\n\n`
+            : `Thank you for the timely payment!\n\n`) +
+        `Thank you for choosing SLN Cable! 🙏`;
+};
+
+export const formatPaymentMessage = (bill, paymentAmount) => {
+    const total = bill.totalAmount || 0;
+    const paid = bill.amountPaid || 0;
+    const balance = bill.balance ?? (total - paid);
+    const month = billMonthLabel(bill.generatedDate);
+    const payments = bill.payments || [];
+    const payCount = payments.length;
+
+    const paymentLabel =
+        payCount === 1 ? '1st payment' :
+        payCount === 2 ? '2nd payment' :
+        payCount === 3 ? '3rd payment' :
+        `${payCount}th payment`;
+
+    const thisPayment = paymentAmount ?? (payments.length > 0 ? payments[payments.length - 1]?.amount : paid);
+
+    // Balance by service (for both-type bills)
+    let balanceBreakdown = '';
+    if (balance > 0 && bill.serviceType === 'both' && bill.tvAmount && bill.internetAmount) {
+        const tvBal = Math.round(balance * (bill.tvAmount / total));
+        const netBal = balance - tvBal;
+        balanceBreakdown = `   📺 TV due      : ${fmtAmt(tvBal)}\n   🌐 Internet due: ${fmtAmt(netBal)}\n`;
+    }
+
+    // Status line
+    let statusLine = '';
+    if (balance <= 0) {
+        statusLine = `✅ *Bill fully cleared! No balance remaining.*`;
+    } else {
+        statusLine = `⚠️ *Balance still due — please pay at your earliest.*`;
+    }
+
+    return `*SLN Cable & Internet Services*\n\n` +
+        `Dear *${bill.customerName}*,\n\n` +
+        `✅ Payment received! Thank you.\n\n` +
+        `📋 *Bill No :* #${bill.billNumber}\n` +
+        `📅 *Month   :* ${month}\n` +
+        `📡 *Service :* ${serviceLabel(bill.serviceType)}\n\n` +
+        `━━━━━━━━━━━━━━━━━━━\n` +
+        `💳 *Payment Summary:*\n` +
+        `   This Payment  : *${fmtAmt(thisPayment)}* (${paymentLabel})\n` +
+        `   Total Amount  : ${fmtAmt(total)}\n` +
+        `   Total Paid    : ${fmtAmt(paid)}\n` +
+        `   Balance Due   : *${fmtAmt(Math.max(0, balance))}*\n` +
+        (balanceBreakdown ? balanceBreakdown : '') +
+        `━━━━━━━━━━━━━━━━━━━\n\n` +
+        statusLine + `\n\n` +
+        `Thank you for using SLN Cable! 🙏`;
 };
