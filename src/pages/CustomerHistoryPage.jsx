@@ -40,7 +40,6 @@ const CustomerHistoryPage = () => {
                                 placeholder="Search by Name, Phone, ID or Box Number..."
                                 value={searchHistory}
                                 onChange={e => setSearchHistory(e.target.value)}
-                                autoFocus
                             />
                         </div>
 

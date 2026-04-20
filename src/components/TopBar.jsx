@@ -50,7 +50,7 @@ const ChangePasswordModal = ({ user, onClose }) => {
                     <form onSubmit={handleSubmit} className="cp-body">
                         <div className="form-group">
                             <label>Current Password</label>
-                            <input type="password" value={current} placeholder="••••••••" autoFocus
+                            <input type="password" value={current} placeholder="••••••••"
                                 onChange={e => { setCurrent(e.target.value); setError(''); }} required />
                         </div>
                         <div className="form-group">
@@ -171,6 +171,7 @@ const TopBar = () => {
             {menuOpen && (
                 <div className="topnav-overlay" onClick={() => setMenuOpen(false)}>
                     <div className="topnav-drawer" onClick={e => e.stopPropagation()}>
+                        {/* Profile at top */}
                         <div className="topnav-drawer-user">
                             <div className="topnav-avatar" style={{ width: 40, height: 40, fontSize: '1rem', flexShrink: 0 }}>
                                 {user?.name?.charAt(0).toUpperCase()}
@@ -180,6 +181,7 @@ const TopBar = () => {
                                 <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', textTransform: 'capitalize' }}>{user?.role}</div>
                             </div>
                         </div>
+                        {/* Nav links fill remaining space, scroll if needed */}
                         <div className="topnav-drawer-links">
                             {allowed.map(item => (
                                 <NavLink
@@ -193,12 +195,15 @@ const TopBar = () => {
                                 </NavLink>
                             ))}
                         </div>
-                        <button className="topnav-drawer-logout" onClick={() => { setMenuOpen(false); setChangePwdOpen(true); }}>
-                            <KeyRound size={16} /> Change Password
-                        </button>
-                        <button className="topnav-drawer-logout" onClick={logout}>
-                            <LogOut size={16} /> Logout
-                        </button>
+                        {/* Actions pinned at bottom */}
+                        <div className="topnav-drawer-bottom">
+                            <button className="topnav-drawer-logout" onClick={() => { setMenuOpen(false); setChangePwdOpen(true); }}>
+                                <KeyRound size={16} /> Change Password
+                            </button>
+                            <button className="topnav-drawer-logout" onClick={logout}>
+                                <LogOut size={16} /> Logout
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

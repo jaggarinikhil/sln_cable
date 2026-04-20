@@ -31,7 +31,7 @@ const ResetPasswordModal = ({ user: targetUser, onClose, onSave }) => {
                 <form onSubmit={handleSubmit} className="rp-body">
                     <div className="form-group">
                         <label>New Password</label>
-                        <input type="password" value={newPassword} placeholder="••••••••" autoFocus
+                        <input type="password" value={newPassword} placeholder="••••••••"
                             onChange={e => { setNewPassword(e.target.value); setError(''); }} required />
                     </div>
                     <div className="form-group">

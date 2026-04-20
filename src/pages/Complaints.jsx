@@ -415,7 +415,7 @@ const Complaints = () => {
                                         <Search size={16} className="bl-search-icon" />
                                         <input
                                             type="text" placeholder="Search by name, phone or box…"
-                                            value={customerSearch} onChange={e => setCustomerSearch(e.target.value)} autoFocus
+                                            value={customerSearch} onChange={e => setCustomerSearch(e.target.value)}
                                         />
                                         {customerSearch && <button className="bl-search-clear" onClick={() => setCustomerSearch('')}><X size={13} /></button>}
                                     </div>

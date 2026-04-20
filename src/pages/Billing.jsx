@@ -101,7 +101,7 @@ const GenerateBillModal = ({ onClose, preselectedCustomer }) => {
                                 <Search size={16} className="bl-search-icon" />
                                 <input
                                     type="text" placeholder="Search name, phone or box..."
-                                    value={search} onChange={e => setSearch(e.target.value)} autoFocus
+                                    value={search} onChange={e => setSearch(e.target.value)}
                                 />
                                 {search && <button className="bl-search-clear" onClick={() => setSearch('')}><X size={13} /></button>}
                             </div>
