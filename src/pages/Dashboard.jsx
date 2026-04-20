@@ -627,6 +627,7 @@ const DashboardStyles = () => (
     .recent-activity h3 { margin-bottom: 10px; }
     .dashboard-bottom-grid { gap: 12px; }
     .data-table th, .data-table td { padding: 8px 10px; font-size: 0.78rem; }
+    .recent-activity .table-container { max-height: 320px; overflow-y: auto; overflow-x: auto; }
 }
 @media (max-width: 480px) {
     .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
