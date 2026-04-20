@@ -416,7 +416,7 @@ const OwnerDashboard = ({ customers, bills, complaints, navigate }) => {
                 {/* Recent Payments */}
                 <div className="card recent-activity">
                     <h3>Recent Payments</h3>
-                    <div style={{ height: 260, overflowY: 'scroll', overflowX: 'auto', WebkitOverflowScrolling: 'touch', borderRadius: 12 }}>
+                    <div className="table-container no-border no-margin">
                         <table className="data-table">
                             <thead>
                                 <tr>
@@ -459,7 +459,7 @@ const OwnerDashboard = ({ customers, bills, complaints, navigate }) => {
                 {/* Recent Complaints */}
                 <div className="card recent-activity">
                     <h3>Recent Complaints</h3>
-                    <div style={{ height: 260, overflowY: 'scroll', overflowX: 'auto', WebkitOverflowScrolling: 'touch', borderRadius: 12 }}>
+                    <div className="table-container no-border no-margin">
                         <table className="data-table">
                             <thead>
                                 <tr>
@@ -509,7 +509,7 @@ const OwnerDashboard = ({ customers, bills, complaints, navigate }) => {
                 {pendingBills.length === 0 ? (
                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', textAlign: 'center', padding: '12px 0' }}>No pending bills.</p>
                 ) : (
-                    <div style={{ height: 260, overflowY: 'scroll', overflowX: 'auto', WebkitOverflowScrolling: 'touch', borderRadius: 12 }}>
+                    <div className="table-container no-border no-margin">
                         <table className="data-table">
                             <thead>
                                 <tr>
