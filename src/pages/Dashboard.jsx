@@ -273,6 +273,11 @@ const OwnerDashboard = ({ customers, bills, complaints, navigate }) => {
     const totalOutstanding = bills.reduce((sum, b) => sum + (b.balance || 0), 0);
     const activeComplaints = complaints.filter(c => c.status !== 'Completed').length;
 
+    const pendingBills = [...bills]
+        .filter(b => b.status === 'Due' || b.status === 'Partial')
+        .sort((a, b) => (b.balance || 0) - (a.balance || 0))
+        .slice(0, 30);
+
     const modeSum = (label) => bills.reduce((sum, b) =>
         sum + (b.payments?.filter(p => p.mode?.toLowerCase() === label.toLowerCase()).reduce((s, p) => s + p.amount, 0) || 0), 0);
     const paymentModeData = [
@@ -491,6 +496,51 @@ const OwnerDashboard = ({ customers, bills, complaints, navigate }) => {
                         </table>
                     </div>
                 </div>
+            </div>
+
+            {/* Pending Bills */}
+            <div className="card recent-activity" style={{ marginTop: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                    <h3 style={{ margin: 0 }}>Pending Bills</h3>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#f87171' }}>
+                        {pendingBills.length} unpaid
+                    </span>
+                </div>
+                {pendingBills.length === 0 ? (
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', textAlign: 'center', padding: '12px 0' }}>No pending bills.</p>
+                ) : (
+                    <div style={{ height: 260, overflowY: 'scroll', overflowX: 'auto', WebkitOverflowScrolling: 'touch', borderRadius: 12 }}>
+                        <table className="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Customer</th>
+                                    <th>Bill #</th>
+                                    <th>Total</th>
+                                    <th>Paid</th>
+                                    <th>Balance</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {pendingBills.map(b => (
+                                    <tr key={b.id} className="payment-row-clickable"
+                                        onClick={() => navigate('/payments', { state: { customerId: b.customerId } })}>
+                                        <td><strong>{b.customerName || '—'}</strong></td>
+                                        <td style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>#{b.billNumber}</td>
+                                        <td style={{ fontWeight: 600 }}>₹{(b.totalAmount || 0).toLocaleString('en-IN')}</td>
+                                        <td className="text-paid">₹{(b.amountPaid || 0).toLocaleString('en-IN')}</td>
+                                        <td style={{ color: '#f87171', fontWeight: 700 }}>₹{(b.balance || 0).toLocaleString('en-IN')}</td>
+                                        <td>
+                                            <span className={`complaint-status-badge ${b.status === 'Partial' ? 'complaint-status-in-progress' : 'complaint-status-open'}`}>
+                                                {b.status}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
             </div>
         </>
     );

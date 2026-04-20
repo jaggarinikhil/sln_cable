@@ -394,7 +394,6 @@ body {
     border: 1px solid var(--border);
     border-radius: 20px;
     overflow-x: auto;
-    overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
 }
 
