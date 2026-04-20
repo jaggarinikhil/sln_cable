@@ -303,7 +303,7 @@ const OwnerDashboard = ({ customers, bills, complaints, navigate }) => {
     const recentPayments = bills
         .flatMap(b => (b.payments || []).map(p => ({ ...p, customerName: b.customerName, customerId: b.customerId, billNumber: b.billNumber })))
         .sort((a, b) => new Date(b.date + 'T' + (b.createdAt || '00:00')) - new Date(a.date + 'T' + (a.createdAt || '00:00')))
-        .slice(0, 6);
+        .slice(0, 30);
 
     const getComplaintCustomerName = (c) =>
         customers.find(cu => String(cu.id) === String(c.customerId))?.name || c.customerName || '—';
@@ -311,7 +311,7 @@ const OwnerDashboard = ({ customers, bills, complaints, navigate }) => {
     const recentComplaints = [...complaints]
         .filter(c => c.status !== 'Completed')
         .sort((a, b) => new Date(b.createdAt || b.date || 0) - new Date(a.createdAt || a.date || 0))
-        .slice(0, 6);
+        .slice(0, 30);
 
     const getPaymentBadgeClass = (mode) => {
         const m = mode?.toLowerCase();
@@ -627,7 +627,7 @@ const DashboardStyles = () => (
     .recent-activity h3 { margin-bottom: 10px; }
     .dashboard-bottom-grid { gap: 12px; }
     .data-table th, .data-table td { padding: 8px 10px; font-size: 0.78rem; }
-    .recent-activity .table-container { max-height: 320px; overflow-y: auto; overflow-x: auto; }
+    .recent-activity .table-container { max-height: 260px; overflow-y: auto !important; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 }
 @media (max-width: 480px) {
     .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
