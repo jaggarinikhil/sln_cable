@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "SLN Cable",
+    "slug": "sln-cable",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#070a13"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.slncable.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#070a13"
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "com.slncable.app"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "@react-native-community/datetimepicker"
+    ]
+  }
+}
