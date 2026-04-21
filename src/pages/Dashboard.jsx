@@ -348,7 +348,7 @@ const OwnerDashboard = ({ customers, bills, complaints, navigate }) => {
                     subtext="Cable TV this month"
                     icon={<Tv2 size={20} />}
                     color="168, 85, 247"
-                    onClick={() => navigate('/billing')}
+                    onClick={() => navigate('/billing', { state: { service: 'tv' } })}
                 />
                 <StatCard
                     title="Internet Collected"
@@ -356,7 +356,7 @@ const OwnerDashboard = ({ customers, bills, complaints, navigate }) => {
                     subtext="Internet this month"
                     icon={<Wifi size={20} />}
                     color="6, 182, 212"
-                    onClick={() => navigate('/billing')}
+                    onClick={() => navigate('/billing', { state: { service: 'internet' } })}
                 />
                 <StatCard
                     title="Total Outstanding"

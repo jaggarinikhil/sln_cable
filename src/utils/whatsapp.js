@@ -74,49 +74,63 @@ export const formatBillMessage = (bill) => {
         `Thank you for choosing SLN Cable! 🙏`;
 };
 
-export const formatPaymentMessage = (bill, paymentAmount) => {
-    const total = bill.totalAmount || 0;
-    const paid = bill.amountPaid || 0;
-    const balance = bill.balance ?? (total - paid);
-    const month = billMonthLabel(bill.generatedDate);
-    const payments = bill.payments || [];
+export const formatPaymentMessage = (bill, paymentAmount, paymentDate) => {
+    // Handle case where bill might be a string (old bug) or missing fields
+    const b = (typeof bill === 'string') ? { customerName: bill } : (bill || {});
+
+    const total = b.totalAmount || 0;
+    const paid = b.amountPaid || 0;
+    const balance = b.balance ?? (total > 0 ? (total - paid) : 0);
+    const payments = b.payments || [];
     const payCount = payments.length;
 
     const paymentLabel =
         payCount === 1 ? '1st payment' :
-        payCount === 2 ? '2nd payment' :
-        payCount === 3 ? '3rd payment' :
-        `${payCount}th payment`;
+            payCount === 2 ? '2nd payment' :
+                payCount === 3 ? '3rd payment' :
+                    payCount > 0 ? `${payCount}th payment` : 'Payment';
 
     const thisPayment = paymentAmount ?? (payments.length > 0 ? payments[payments.length - 1]?.amount : paid);
 
+    // Payment date display
+    const dateToShow = paymentDate || b.paymentDate || new Date().toISOString().split('T')[0];
+    const payDateStr = (() => {
+        try {
+            return new Date(dateToShow + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+        } catch { return dateToShow; }
+    })();
+
     // Balance by service (for both-type bills)
     let balanceBreakdown = '';
-    if (balance > 0 && bill.serviceType === 'both' && bill.tvAmount && bill.internetAmount) {
-        const tvBal = Math.round(balance * (bill.tvAmount / total));
+    if (balance > 0 && b.serviceType === 'both' && b.tvAmount && b.internetAmount) {
+        const tvBal = Math.round(balance * (b.tvAmount / total));
         const netBal = balance - tvBal;
         balanceBreakdown = `   📺 TV due      : ${fmtAmt(tvBal)}\n   🌐 Internet due: ${fmtAmt(netBal)}\n`;
     }
 
     // Status line
     let statusLine = '';
-    if (balance <= 0) {
+    if (balance <= 0 && total > 0) {
         statusLine = `✅ *Bill fully cleared! No balance remaining.*`;
-    } else {
+    } else if (balance > 0) {
         statusLine = `⚠️ *Balance still due — please pay at your earliest.*`;
+    } else {
+        statusLine = `✅ *Payment received successfully.*`;
     }
 
+    const billInfo = b.billNumber && b.billNumber !== 'MULTIPLE' ? `📋 *Bill No :* #${b.billNumber}\n` : '';
+
     return `*SLN Cable & Internet Services*\n\n` +
-        `Dear *${bill.customerName}*,\n\n` +
+        `Dear *${b.customerName || 'Customer'}*,\n\n` +
         `✅ Payment received! Thank you.\n\n` +
-        `📋 *Bill No :* #${bill.billNumber}\n` +
-        `📅 *Month   :* ${month}\n` +
-        `📡 *Service :* ${serviceLabel(bill.serviceType)}\n\n` +
+        billInfo +
+        `📅 *Date    :* ${payDateStr}\n` +
+        `📡 *Service :* ${serviceLabel(b.serviceType)}\n\n` +
         `━━━━━━━━━━━━━━━━━━━\n` +
         `💳 *Payment Summary:*\n` +
-        `   This Payment  : *${fmtAmt(thisPayment)}* (${paymentLabel})\n` +
-        `   Total Amount  : ${fmtAmt(total)}\n` +
-        `   Total Paid    : ${fmtAmt(paid)}\n` +
+        `   This Payment  : *${fmtAmt(thisPayment)}*${paymentLabel !== 'Payment' ? ` (${paymentLabel})` : ''}\n` +
+        (total > 0 ? `   Total Amount  : ${fmtAmt(total)}\n` : '') +
+        (total > 0 ? `   Total Paid    : ${fmtAmt(paid)}\n` : '') +
         `   Balance Due   : *${fmtAmt(Math.max(0, balance))}*\n` +
         (balanceBreakdown ? balanceBreakdown : '') +
         `━━━━━━━━━━━━━━━━━━━\n\n` +

@@ -99,7 +99,7 @@ const BillDetailModal = ({ bill, onClose }) => {
 
     const handleSharePayment = () => {
         const lastPayment = (bill.payments || []).slice(-1)[0];
-        const msg = formatPaymentMessage(bill, lastPayment?.amount);
+        const msg = formatPaymentMessage(bill, lastPayment?.amount, lastPayment?.date);
         window.open(generateWhatsAppLink(bill.phone, msg), '_blank');
     };
 

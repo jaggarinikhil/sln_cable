@@ -235,7 +235,7 @@ const Billing = () => {
     );
     const [dateMode, setDateMode] = useState('today');
     const [singleDate, setSingleDate] = useState('');
-    const [svcFilter, setSvcFilter] = useState('all');
+    const [svcFilter, setSvcFilter] = useState(location.state?.service || 'all');
 
     const today = new Date();
     const todayStr = today.toISOString().slice(0, 10);

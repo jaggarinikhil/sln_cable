@@ -57,7 +57,7 @@ const Customers = () => {
     const handleSave = (data, billSpec) => {
         const newId = addCustomer(data);
         if (billSpec) {
-            addBill({ ...billSpec, customerId: newId });
+            addBill({ ...billSpec, customerId: newId, customerName: data.name, phone: data.phone, boxNumber: data.boxNumber || '' });
         }
         setModalOpen(false);
         setPrefillName('');
@@ -235,9 +235,11 @@ const Customers = () => {
                                         <span className="cust-box">{c.boxNumber || '—'}</span>
                                     </td>
                                     <td>
-                                        {(() => { const due = getOutstanding(c.id); return due > 0
-                                            ? <span className="cust-due-amt">₹{due.toLocaleString('en-IN')}</span>
-                                            : <span className="cust-due-clear">Clear</span>; })()}
+                                        {(() => {
+                                            const due = getOutstanding(c.id); return due > 0
+                                                ? <span className="cust-due-amt">₹{due.toLocaleString('en-IN')}</span>
+                                                : <span className="cust-due-clear">Clear</span>;
+                                        })()}
                                     </td>
                                     <td>
                                         <ChevronRight size={16} style={{ color: 'var(--text-secondary)' }} />
@@ -282,9 +284,11 @@ const Customers = () => {
                                 </div>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                {(() => { const due = getOutstanding(c.id); return due > 0
-                                    ? <span className="cust-due-amt">₹{due.toLocaleString('en-IN')}</span>
-                                    : <span className="cust-due-clear">Clear</span>; })()}
+                                {(() => {
+                                    const due = getOutstanding(c.id); return due > 0
+                                        ? <span className="cust-due-amt">₹{due.toLocaleString('en-IN')}</span>
+                                        : <span className="cust-due-clear">Clear</span>;
+                                })()}
                                 <ChevronRight size={18} style={{ color: 'var(--text-secondary)' }} />
                             </div>
                         </div>

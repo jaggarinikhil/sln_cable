@@ -14,7 +14,7 @@ const CustomerModal = ({ customer: editingCustomer, initialName, onClose, onSave
 
     const [step, setStep] = useState('form'); // 'form' | 'bill'
     const [billChoice, setBillChoice] = useState(null); // null | 'tv' | 'internet' | 'both'
-const [formData, setFormData] = useState(() => {
+    const [formData, setFormData] = useState(() => {
         if (editingCustomer) {
             const s = editingCustomer.services || {};
             const fallbackDate = editingCustomer.createdAt
@@ -67,32 +67,41 @@ const [formData, setFormData] = useState(() => {
     const handleConfirmBill = (withBill) => {
         let billSpec = null;
         if (withBill && billChoice) {
-            const today = new Date().toISOString();
+            // Use YYYY-MM-DD format (full ISO causes 'Invalid Date' in date parsing)
+            const todayDate = new Date().toISOString().split('T')[0];
+            const billBase = {
+                generatedDate: todayDate,
+                amountPaid: 0,
+                payments: [],
+                status: 'Due',
+                billNumber: 'AUTO-' + Date.now().toString().slice(-6),
+            };
             if (billChoice === 'both') {
                 billSpec = {
+                    ...billBase,
                     serviceType: 'both',
                     totalAmount: bothBillAmt,
                     tvAmount: tvBillAmt,
                     internetAmount: netBillAmt,
                     balance: bothBillAmt,
-                    status: 'Pending',
-                    generatedDate: today,
                 };
             } else if (billChoice === 'tv') {
                 billSpec = {
+                    ...billBase,
                     serviceType: 'tv',
                     totalAmount: tvBillAmt,
+                    tvAmount: tvBillAmt,
+                    internetAmount: 0,
                     balance: tvBillAmt,
-                    status: 'Pending',
-                    generatedDate: today,
                 };
             } else {
                 billSpec = {
+                    ...billBase,
                     serviceType: 'internet',
                     totalAmount: netBillAmt,
+                    tvAmount: 0,
+                    internetAmount: netBillAmt,
                     balance: netBillAmt,
-                    status: 'Pending',
-                    generatedDate: today,
                 };
             }
         }
@@ -318,14 +327,14 @@ const [formData, setFormData] = useState(() => {
                                 </div>
                             </div>
                             <div className="cm-field">
-                                    <label className="cm-label">Subscribed Date <span className="cm-optional">(auto-filled, editable)</span></label>
-                                    <input
-                                        className="cm-input cm-input-no-icon"
-                                        type="date"
-                                        value={formData.services.internet.subscribedDate || ''}
-                                        onChange={e => updateNet('subscribedDate', e.target.value)}
-                                    />
-                                </div>
+                                <label className="cm-label">Subscribed Date <span className="cm-optional">(auto-filled, editable)</span></label>
+                                <input
+                                    className="cm-input cm-input-no-icon"
+                                    type="date"
+                                    value={formData.services.internet.subscribedDate || ''}
+                                    onChange={e => updateNet('subscribedDate', e.target.value)}
+                                />
+                            </div>
                             <div className="cm-plan-preview">
                                 <span className="cm-plan-badge">{formData.services.internet.speed} Mbps</span>
                                 <span className="cm-plan-badge cm-plan-validity">{VALIDITIES.find(v => v.value === formData.services.internet.validity)?.label}</span>
@@ -365,62 +374,62 @@ const [formData, setFormData] = useState(() => {
                         {/* Service picker */}
                         <p className="cm-label" style={{ marginBottom: 4 }}>Select service to bill</p>
                         <div className="cm-bill-svc-row">
-                                    {hasTv && (
-                                        <button type="button"
-                                            className={`cm-bill-svc-btn ${billChoice === 'tv' ? 'cm-bill-svc-active-tv' : ''}`}
-                                            onClick={() => setBillChoice('tv')}
-                                        >
-                                            <Tv size={18} />
-                                            <div>
-                                                <p>Cable TV</p>
-                                                <p className="cm-bill-svc-amt">₹{tvBillAmt.toLocaleString('en-IN')}</p>
-                                                {formData.services.tv.installationFee > 0 && (
-                                                    <p className="cm-bill-svc-breakdown">
-                                                        ₹{formData.services.tv.monthlyRate} + ₹{formData.services.tv.installationFee} install
-                                                    </p>
-                                                )}
-                                            </div>
-                                            <div className={`cm-service-check ${billChoice === 'tv' ? 'checked' : ''}`}>
-                                                {billChoice === 'tv' && '✓'}
-                                            </div>
-                                        </button>
-                                    )}
-                                    {hasNet && (
-                                        <button type="button"
-                                            className={`cm-bill-svc-btn ${billChoice === 'internet' ? 'cm-bill-svc-active-net' : ''}`}
-                                            onClick={() => setBillChoice('internet')}
-                                        >
-                                            <Wifi size={18} />
-                                            <div>
-                                                <p>Internet</p>
-                                                <p className="cm-bill-svc-amt">₹{netBillAmt.toLocaleString('en-IN')}</p>
-                                                {formData.services.internet.installationFee > 0 && (
-                                                    <p className="cm-bill-svc-breakdown">
-                                                        ₹{formData.services.internet.monthlyRate} + ₹{formData.services.internet.installationFee} install
-                                                    </p>
-                                                )}
-                                            </div>
-                                            <div className={`cm-service-check ${billChoice === 'internet' ? 'checked' : ''}`}>
-                                                {billChoice === 'internet' && '✓'}
-                                            </div>
-                                        </button>
-                                    )}
-                                    {hasTv && hasNet && (
-                                        <button type="button"
-                                            className={`cm-bill-svc-btn cm-bill-svc-full ${billChoice === 'both' ? 'cm-bill-svc-active-both' : ''}`}
-                                            onClick={() => setBillChoice('both')}
-                                        >
-                                            <CheckCircle size={18} />
-                                            <div>
-                                                <p>Both Services</p>
-                                                <p className="cm-bill-svc-amt">₹{bothBillAmt.toLocaleString('en-IN')}</p>
-                                                <p className="cm-bill-svc-breakdown">TV ₹{tvBillAmt} + Internet ₹{netBillAmt}</p>
-                                            </div>
-                                            <div className={`cm-service-check ${billChoice === 'both' ? 'checked' : ''}`}>
-                                                {billChoice === 'both' && '✓'}
-                                            </div>
-                                        </button>
-                                    )}
+                            {hasTv && (
+                                <button type="button"
+                                    className={`cm-bill-svc-btn ${billChoice === 'tv' ? 'cm-bill-svc-active-tv' : ''}`}
+                                    onClick={() => setBillChoice('tv')}
+                                >
+                                    <Tv size={18} />
+                                    <div>
+                                        <p>Cable TV</p>
+                                        <p className="cm-bill-svc-amt">₹{tvBillAmt.toLocaleString('en-IN')}</p>
+                                        {formData.services.tv.installationFee > 0 && (
+                                            <p className="cm-bill-svc-breakdown">
+                                                ₹{formData.services.tv.monthlyRate} + ₹{formData.services.tv.installationFee} install
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div className={`cm-service-check ${billChoice === 'tv' ? 'checked' : ''}`}>
+                                        {billChoice === 'tv' && '✓'}
+                                    </div>
+                                </button>
+                            )}
+                            {hasNet && (
+                                <button type="button"
+                                    className={`cm-bill-svc-btn ${billChoice === 'internet' ? 'cm-bill-svc-active-net' : ''}`}
+                                    onClick={() => setBillChoice('internet')}
+                                >
+                                    <Wifi size={18} />
+                                    <div>
+                                        <p>Internet</p>
+                                        <p className="cm-bill-svc-amt">₹{netBillAmt.toLocaleString('en-IN')}</p>
+                                        {formData.services.internet.installationFee > 0 && (
+                                            <p className="cm-bill-svc-breakdown">
+                                                ₹{formData.services.internet.monthlyRate} + ₹{formData.services.internet.installationFee} install
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div className={`cm-service-check ${billChoice === 'internet' ? 'checked' : ''}`}>
+                                        {billChoice === 'internet' && '✓'}
+                                    </div>
+                                </button>
+                            )}
+                            {hasTv && hasNet && (
+                                <button type="button"
+                                    className={`cm-bill-svc-btn cm-bill-svc-full ${billChoice === 'both' ? 'cm-bill-svc-active-both' : ''}`}
+                                    onClick={() => setBillChoice('both')}
+                                >
+                                    <CheckCircle size={18} />
+                                    <div>
+                                        <p>Both Services</p>
+                                        <p className="cm-bill-svc-amt">₹{bothBillAmt.toLocaleString('en-IN')}</p>
+                                        <p className="cm-bill-svc-breakdown">TV ₹{tvBillAmt} + Internet ₹{netBillAmt}</p>
+                                    </div>
+                                    <div className={`cm-service-check ${billChoice === 'both' ? 'checked' : ''}`}>
+                                        {billChoice === 'both' && '✓'}
+                                    </div>
+                                </button>
+                            )}
                         </div>
 
                         <div className="cm-actions">

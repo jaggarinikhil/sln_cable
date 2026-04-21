@@ -288,7 +288,7 @@ const CustomerProfile = () => {
                     onClose={() => setEditOpen(false)}
                     onSave={(data, billSpec) => {
                         updateCustomer(id, data);
-                        if (billSpec) addBill({ ...billSpec, customerId: id });
+                        if (billSpec) addBill({ ...billSpec, customerId: id, customerName: customer.name, phone: customer.phone, boxNumber: customer.boxNumber });
                         setEditOpen(false);
                     }}
                 />

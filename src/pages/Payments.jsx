@@ -133,7 +133,36 @@ const RecordPaymentModal = ({ onClose, preselectedCustomer }) => {
         onClose();
         const newOutstanding = Math.max(0, totalOutstanding - totalPaid);
         if (confirm('Payment saved! Share confirmation?')) {
-            window.open(generateWhatsAppLink(selectedCustomer.phone, formatPaymentMessage(selectedCustomer.name, totalPaid, newOutstanding)), '_blank');
+            const cumulativePaid = distribution.reduce((s, d) => s + ((d.bill.amountPaid || 0) + d.allocated), 0);
+            const totalPaymentCount = distribution.reduce((s, d) => s + ((d.bill.payments || []).length + 1), 0);
+
+            // Resolve service type from what was actually paid (not skipped)
+            const paidDist = distribution.filter(d => (billSvcChoices[d.bill.id] || 'both') !== 'skip');
+            const resolvedServiceType = (() => {
+                if (paidDist.length === 0) return 'tv';
+                const types = new Set();
+                for (const d of paidDist) {
+                    const choice = billSvcChoices[d.bill.id] || 'both';
+                    if (d.bill.serviceType === 'tv' || choice === 'tv') types.add('tv');
+                    else if (d.bill.serviceType === 'internet' || choice === 'internet') types.add('internet');
+                    else { types.add('tv'); types.add('internet'); }
+                }
+                if (types.has('tv') && types.has('internet')) return 'both';
+                if (types.has('tv')) return 'tv';
+                return 'internet';
+            })();
+
+            const summaryBill = {
+                customerName: selectedCustomer.name,
+                totalAmount: totalOutstanding,
+                amountPaid: cumulativePaid,
+                balance: newOutstanding,
+                generatedDate: paymentData.date,
+                serviceType: resolvedServiceType,
+                billNumber: paidDist.length === 1 ? paidDist[0].bill.billNumber : 'MULTIPLE',
+                payments: Array.from({ length: totalPaymentCount }, (_, i) => ({ amount: i === totalPaymentCount - 1 ? totalPaid : 0 }))
+            };
+            window.open(generateWhatsAppLink(selectedCustomer.phone, formatPaymentMessage(summaryBill, totalPaid, paymentData.date)), '_blank');
         }
     };
 
@@ -148,7 +177,7 @@ const RecordPaymentModal = ({ onClose, preselectedCustomer }) => {
             (c.name || '').toLowerCase().includes(search.toLowerCase()) ||
             (c.phone || '').includes(search) ||
             (c.boxNumber || '').includes(search)
-          ).slice(0, 6)
+        ).slice(0, 6)
         : [];
 
     return (
@@ -251,14 +280,14 @@ const RecordPaymentModal = ({ onClose, preselectedCustomer }) => {
                                                     {/* Service choice segmented control */}
                                                     <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.28)', border: '1px solid var(--border)', borderRadius: 10, padding: 3, marginTop: 7, gap: 2 }}>
                                                         {(canChoose ? [
-                                                                { key: 'both', label: 'Both', amt: b.balance, color: null },
-                                                                { key: 'tv', label: 'TV', amt: b.tvAmount, color: '#a855f7' },
-                                                                { key: 'internet', label: 'Internet', amt: b.internetAmount, color: '#06b6d4' },
-                                                                { key: 'skip', label: 'Skip', amt: null, color: '#ef4444' },
-                                                            ] : [
-                                                                { key: 'both', label: 'Pay', amt: b.balance, color: null },
-                                                                { key: 'skip', label: 'Skip', amt: null, color: '#ef4444' },
-                                                            ]).map(opt => {
+                                                            { key: 'both', label: 'Both', amt: b.balance, color: null },
+                                                            { key: 'tv', label: 'TV', amt: b.tvAmount, color: '#a855f7' },
+                                                            { key: 'internet', label: 'Internet', amt: b.internetAmount, color: '#06b6d4' },
+                                                            { key: 'skip', label: 'Skip', amt: null, color: '#ef4444' },
+                                                        ] : [
+                                                            { key: 'both', label: 'Pay', amt: b.balance, color: null },
+                                                            { key: 'skip', label: 'Skip', amt: null, color: '#ef4444' },
+                                                        ]).map(opt => {
                                                             const active = choice === opt.key;
                                                             return (
                                                                 <button key={opt.key} type="button"
@@ -371,7 +400,7 @@ const PendingBillsTable = ({ bills, customers, onCollect, dateMode, singleDate, 
             (b.customerName || '').toLowerCase().includes(search.toLowerCase()) ||
             (b.phone || '').includes(search) ||
             String(b.billNumber || '').includes(search)
-          )
+        )
         : pendingBills;
 
     return (
@@ -379,7 +408,7 @@ const PendingBillsTable = ({ bills, customers, onCollect, dateMode, singleDate, 
             {/* Date + service filter bar */}
             <div className="bl-date-bar">
                 <div className="bl-date-modes">
-                    {[['all','All'],['today','Today'],['yesterday','Yesterday'],['last15','Last 15 days'],['last30','Last month'],['last6m','Last 6 months'],['single','Pick date']].map(([m, label]) => (
+                    {[['all', 'All'], ['today', 'Today'], ['yesterday', 'Yesterday'], ['last15', 'Last 15 days'], ['last30', 'Last month'], ['last6m', 'Last 6 months'], ['single', 'Pick date']].map(([m, label]) => (
                         <button key={m} className={`bl-dmode${dateMode === m ? ' active' : ''}`}
                             onClick={() => { onDateModeChange(m); if (m !== 'single') onSingleDateChange(''); }}>
                             {label}
