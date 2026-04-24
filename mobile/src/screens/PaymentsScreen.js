@@ -285,6 +285,7 @@ export default function PaymentsScreen() {
           bill={detailBill}
           customer={customerMap[detailBill.customerId]}
           users={users}
+          onRecordPayment={() => setShowRecord(true)}
           onClose={() => setDetailBill(null)}
         />
       )}
@@ -293,7 +294,11 @@ export default function PaymentsScreen() {
       {showRecord && (
         <RecordPaymentSheet
           visible={showRecord}
-          onClose={() => setShowRecord(false)}
+          onClose={() => {
+            setShowRecord(false);
+            setDetailBill(null); // clear detail if we entered from there
+          }}
+          initialCustomer={detailBill ? customerMap[detailBill.customerId] : null}
           customers={customers}
           bills={bills}
           users={users}
@@ -308,7 +313,7 @@ export default function PaymentsScreen() {
 // ═════════════════════════════════════════════════════════════════
 // BILL PAYMENT DETAIL (simple read view)
 // ═════════════════════════════════════════════════════════════════
-function BillPaymentDetail({ bill, customer, users, onClose }) {
+function BillPaymentDetail({ bill, customer, users, onRecordPayment, onClose }) {
   const payments = bill.payments || [];
   return (
     <BottomSheet visible onClose={onClose} title={`Bill #${bill.billNumber || ''}`} subtitle={bill.customerName} icon="card-outline" iconColor={colors.green}>
@@ -321,6 +326,18 @@ function BillPaymentDetail({ bill, customer, users, onClose }) {
         <DetailRow label="Balance" value={fmt(bill.balance)} highlight={bill.balance > 0} />
         <DetailRow label="Status" value={<StatusBadge status={bill.status} />} />
       </View>
+
+      {/* Record Payment Action */}
+      {bill.balance > 0 && (
+        <TouchableOpacity
+          style={[styles.btnPrimary, styles.recordInDetail]}
+          onPress={onRecordPayment}
+        >
+          <Ionicons name="card-outline" size={18} color={colors.white} />
+          <Text style={styles.btnPrimaryText}>Record Payment</Text>
+        </TouchableOpacity>
+      )}
+
       {payments.length > 0 && (
         <View style={styles.detailSection}>
           <Text style={styles.sectionTitle}>Payment History</Text>
@@ -357,13 +374,19 @@ function BillPaymentDetail({ bill, customer, users, onClose }) {
 // ═════════════════════════════════════════════════════════════════
 // RECORD PAYMENT SHEET
 // ═════════════════════════════════════════════════════════════════
-function RecordPaymentSheet({ visible, onClose, customers, bills, users, user, updateMultipleBills }) {
-  const [step, setStep] = useState(1);
+function RecordPaymentSheet({ visible, onClose, initialCustomer, customers, bills, users, user, updateMultipleBills }) {
+  const [step, setStep] = useState(initialCustomer ? 2 : 1);
   const [search, setSearch] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [selectedCustomer, setSelectedCustomer] = useState(initialCustomer || null);
 
-  // payment fields
+  // Re-sync if initialCustomer changes
+  React.useEffect(() => {
+    if (initialCustomer) {
+      setSelectedCustomer(initialCustomer);
+      setStep(2);
+    }
+  }, [initialCustomer]);
   const [amount, setAmount] = useState('');
   const [payDate, setPayDate] = useState(today());
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -511,12 +534,39 @@ function RecordPaymentSheet({ visible, onClose, customers, bills, users, user, u
     setSaving(false);
 
     // offer WhatsApp share
-    const firstBill = pendingBills[0];
+    const paidDist = pendingBills.filter(b => updatesList.some(u => u.id === b.id));
+
+    const billTotal = paidDist.reduce((s, b) => s + (b.totalAmount || 0), 0);
+    const cumulativePaid = paidDist.reduce((s, b) => s + (b.amountPaid || 0), 0) + payAmt;
+    const combinedPayments = [];
+    paidDist.forEach(b => {
+      (b.payments || []).forEach(p => combinedPayments.push(p));
+    });
+    combinedPayments.push({ amount: payAmt });
+
+    const resolvedServiceType = (() => {
+      if (paidDist.length === 0) return 'tv';
+      const types = new Set();
+      for (const d of paidDist) {
+        const choice = serviceChoices[d.id] || 'both';
+        if (d.serviceType === 'tv' || choice === 'tv') types.add('tv');
+        else if (d.serviceType === 'internet' || choice === 'internet') types.add('internet');
+        else { types.add('tv'); types.add('internet'); }
+      }
+      if (types.has('tv') && types.has('internet')) return 'both';
+      if (types.has('tv')) return 'tv';
+      return 'internet';
+    })();
+
     const updatedBill = {
-      ...firstBill,
-      amountPaid: (firstBill.amountPaid || 0) + Math.min(payAmt, effectiveBalance(firstBill, serviceChoices[firstBill.id] || 'both')),
-      balance: Math.max(0, (firstBill.totalAmount || 0) - ((firstBill.amountPaid || 0) + Math.min(payAmt, effectiveBalance(firstBill, serviceChoices[firstBill.id] || 'both')))),
-      payments: [...(firstBill.payments || []), { amount: payAmt }],
+      customerName: selectedCustomer.name,
+      totalAmount: billTotal,
+      amountPaid: cumulativePaid,
+      balance: Math.max(0, billTotal - cumulativePaid),
+      generatedDate: payDate,
+      serviceType: resolvedServiceType,
+      billNumber: paidDist.length === 1 ? paidDist[0].billNumber : 'MULTIPLE',
+      payments: combinedPayments
     };
 
     Alert.alert(
@@ -527,7 +577,7 @@ function RecordPaymentSheet({ visible, onClose, customers, bills, users, user, u
           text: 'Share via WhatsApp',
           onPress: () => {
             if (selectedCustomer.phone) {
-              openWhatsApp(selectedCustomer.phone, formatPaymentMessage(updatedBill, payAmt));
+              openWhatsApp(selectedCustomer.phone, formatPaymentMessage(updatedBill, payAmt, payDate));
             }
           },
         },
@@ -1386,5 +1436,14 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: fontSize.lg,
     fontWeight: fontWeight.semibold,
+  },
+  recordInDetail: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+    shadowColor: colors.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
 });

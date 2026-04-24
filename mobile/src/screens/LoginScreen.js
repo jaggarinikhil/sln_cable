@@ -58,8 +58,8 @@ export default function LoginScreen() {
           <View style={styles.logoCircle}>
             <Ionicons name="tv" size={36} color={colors.accent} />
           </View>
-          <Text style={styles.brandTitle}>SLN CABLE</Text>
-          <Text style={styles.brandSubtitle}>Billing Management System</Text>
+          <Text style={styles.brandTitle}>SLN</Text>
+          <Text style={styles.brandSubtitle}>Cable & Networks</Text>
         </View>
 
         {/* Card */}

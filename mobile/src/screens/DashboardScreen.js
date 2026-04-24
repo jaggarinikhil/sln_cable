@@ -44,22 +44,24 @@ const OwnerDashboard = ({ customers, bills, complaints, navigation }) => {
     [bills, currentYearMonth],
   );
 
-  // TV & Internet collected
+  // TV & Internet collected THIS MONTH (from payment logs)
   const { tvCollected, internetCollected } = useMemo(() => {
     let tv = 0;
     let internet = 0;
-    thisMonthBills.forEach((b) => {
-      const total = b.totalAmount || 1;
-      const paid = b.amountPaid || 0;
-      const tvAmt = b.tvAmount || 0;
-      const netAmt = b.internetAmount || 0;
-      const tvRatio = tvAmt / total;
-      const netRatio = netAmt / total;
-      tv += tvRatio * paid;
-      internet += netRatio * paid;
+    bills.forEach((b) => {
+      const monthPayments = (b.payments || []).filter((p) => p.date?.startsWith(currentYearMonth));
+      if (monthPayments.length > 0) {
+        const total = b.totalAmount || 1;
+        const ratioTV = b.serviceType === 'tv' ? 1 : b.serviceType === 'both' ? ((b.tvAmount || 0) / total) : 0;
+        const ratioNet = b.serviceType === 'internet' ? 1 : b.serviceType === 'both' ? ((b.internetAmount || 0) / total) : 0;
+
+        const monthlyPaidAmt = monthPayments.reduce((s, p) => s + (p.amount || 0), 0);
+        tv += ratioTV * monthlyPaidAmt;
+        internet += ratioNet * monthlyPaidAmt;
+      }
     });
     return { tvCollected: Math.round(tv), internetCollected: Math.round(internet) };
-  }, [thisMonthBills]);
+  }, [bills, currentYearMonth]);
 
   // Total outstanding across ALL bills
   const totalOutstanding = useMemo(
@@ -105,7 +107,7 @@ const OwnerDashboard = ({ customers, bills, complaints, navigation }) => {
     ];
   }, [bills]);
 
-  // Revenue trend – last 6 months
+  // Revenue trend – last 6 months (based on collection date)
   const revenueTrend = useMemo(() => {
     const months = [];
     for (let i = 5; i >= 0; i--) {
@@ -115,13 +117,17 @@ const OwnerDashboard = ({ customers, bills, complaints, navigation }) => {
       months.push({ ym, label, tv: 0, internet: 0 });
     }
     bills.forEach((b) => {
-      const entry = months.find((m) => b.generatedDate?.startsWith(m.ym));
-      if (entry) {
-        const total = b.totalAmount || 1;
-        const paid = b.amountPaid || 0;
-        entry.tv += ((b.tvAmount || 0) / total) * paid;
-        entry.internet += ((b.internetAmount || 0) / total) * paid;
-      }
+      const total = b.totalAmount || 1;
+      const ratioTV = b.serviceType === 'tv' ? 1 : b.serviceType === 'both' ? ((b.tvAmount || 0) / total) : 0;
+      const ratioNet = b.serviceType === 'internet' ? 1 : b.serviceType === 'both' ? ((b.internetAmount || 0) / total) : 0;
+
+      (b.payments || []).forEach((p) => {
+        const entry = months.find((m) => p.date?.startsWith(m.ym));
+        if (entry) {
+          entry.tv += ratioTV * (p.amount || 0);
+          entry.internet += ratioNet * (p.amount || 0);
+        }
+      });
     });
     return months;
   }, [bills]);
@@ -159,6 +165,12 @@ const OwnerDashboard = ({ customers, bills, complaints, navigation }) => {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+      {/* Brand Header */}
+      <View style={styles.brandHeader}>
+        <Ionicons name="tv-outline" size={24} color={colors.accent} />
+        <Text style={styles.brandHeaderText}>SLN CABLE & NETWORKS</Text>
+      </View>
+
       {/* Header */}
       <Text style={styles.header}>Dashboard</Text>
       <Text style={styles.subHeader}>{currentYearMonth}</Text>
@@ -246,9 +258,10 @@ const OwnerDashboard = ({ customers, bills, complaints, navigation }) => {
             data={{
               labels: revenueTrend.map((m) => m.label),
               datasets: [
-                { data: revenueTrend.map((m) => Math.round(m.tv / 1000) || 0) },
+                { data: revenueTrend.map((m) => Math.round(m.tv / 1000) || 0), color: () => colors.purple, strokeWidth: 2 },
+                { data: revenueTrend.map((m) => Math.round(m.internet / 1000) || 0), color: () => colors.cyan, strokeWidth: 2 },
               ],
-              legend: ['TV (K)'],
+              legend: ['TV (K)', 'Net (K)'],
             }}
             width={screenWidth - 48}
             height={220}
@@ -469,6 +482,12 @@ const WorkerDashboard = ({ user, bills, complaints, workHours, salary, users, na
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+      {/* Brand Header */}
+      <View style={styles.brandHeader}>
+        <Ionicons name="tv-outline" size={24} color={colors.accent} />
+        <Text style={styles.brandHeaderText}>SLN CABLE & NETWORKS</Text>
+      </View>
+
       {/* Welcome header */}
       <Text style={styles.header}>Welcome, {firstName}</Text>
       <Text style={styles.subHeader}>{todayStr}</Text>
@@ -635,6 +654,18 @@ const styles = StyleSheet.create({
   contentContainer: {
     padding: spacing.lg,
     paddingTop: spacing.xxl,
+  },
+  brandHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: spacing.xs,
+  },
+  brandHeaderText: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.bold,
+    color: colors.accent,
+    letterSpacing: 1.2,
   },
   header: {
     fontSize: fontSize.xxxl,

@@ -50,7 +50,7 @@ const DashboardStack = createNativeStackNavigator();
 function DashboardNavigator() {
   return (
     <DashboardStack.Navigator screenOptions={stackScreenOptions}>
-      <DashboardStack.Screen name="DashboardHome" component={DashboardScreen} options={{ title: 'Dashboard' }} />
+      <DashboardStack.Screen name="DashboardHome" component={DashboardScreen} options={{ title: 'SLN Cable & Networks' }} />
     </DashboardStack.Navigator>
   );
 }
@@ -59,7 +59,7 @@ const CustomersStack = createNativeStackNavigator();
 function CustomersNavigator() {
   return (
     <CustomersStack.Navigator screenOptions={stackScreenOptions}>
-      <CustomersStack.Screen name="CustomersList" component={CustomersScreen} options={{ title: 'Customers' }} />
+      <CustomersStack.Screen name="CustomersList" component={CustomersScreen} options={{ title: 'SLN Cable & Networks' }} />
       <CustomersStack.Screen name="CustomerProfile" component={CustomerProfileScreen} options={{ title: 'Customer' }} />
     </CustomersStack.Navigator>
   );
@@ -69,7 +69,7 @@ const BillingStack = createNativeStackNavigator();
 function BillingNavigator() {
   return (
     <BillingStack.Navigator screenOptions={stackScreenOptions}>
-      <BillingStack.Screen name="BillingHome" component={BillingScreen} options={{ title: 'Billing' }} />
+      <BillingStack.Screen name="BillingHome" component={BillingScreen} options={{ title: 'SLN Cable & Networks' }} />
     </BillingStack.Navigator>
   );
 }
@@ -78,7 +78,7 @@ const PaymentsStack = createNativeStackNavigator();
 function PaymentsNavigator() {
   return (
     <PaymentsStack.Navigator screenOptions={stackScreenOptions}>
-      <PaymentsStack.Screen name="PaymentsHome" component={PaymentsScreen} options={{ title: 'Payments' }} />
+      <PaymentsStack.Screen name="PaymentsHome" component={PaymentsScreen} options={{ title: 'SLN Cable & Networks' }} />
     </PaymentsStack.Navigator>
   );
 }
@@ -87,7 +87,7 @@ const MoreStack = createNativeStackNavigator();
 function MoreNavigator() {
   return (
     <MoreStack.Navigator screenOptions={stackScreenOptions}>
-      <MoreStack.Screen name="MoreMenu" component={MoreScreen} options={{ title: 'More' }} />
+      <MoreStack.Screen name="MoreMenu" component={MoreScreen} options={{ title: 'SLN Cable & Networks' }} />
       <MoreStack.Screen name="Complaints" component={ComplaintsScreen} options={{ title: 'Complaints' }} />
       <MoreStack.Screen name="WorkHours" component={WorkHoursScreen} options={{ title: 'Work Hours' }} />
       <MoreStack.Screen name="Salary" component={SalaryScreen} options={{ title: 'Salary' }} />

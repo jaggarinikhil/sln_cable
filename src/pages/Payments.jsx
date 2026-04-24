@@ -133,11 +133,17 @@ const RecordPaymentModal = ({ onClose, preselectedCustomer }) => {
         onClose();
         const newOutstanding = Math.max(0, totalOutstanding - totalPaid);
         if (confirm('Payment saved! Share confirmation?')) {
-            const cumulativePaid = distribution.reduce((s, d) => s + ((d.bill.amountPaid || 0) + d.allocated), 0);
-            const totalPaymentCount = distribution.reduce((s, d) => s + ((d.bill.payments || []).length + 1), 0);
+            const paidDist = distribution.filter(d => (billSvcChoices[d.bill.id] || 'both') !== 'skip');
+
+            const billTotal = paidDist.reduce((s, d) => s + (d.bill.totalAmount || 0), 0);
+            const cumulativePaid = paidDist.reduce((s, d) => s + (d.bill.amountPaid || 0), 0) + totalPaid;
+            const combinedPayments = [];
+            paidDist.forEach(d => {
+                (d.bill.payments || []).forEach(p => combinedPayments.push(p));
+            });
+            combinedPayments.push({ amount: totalPaid });
 
             // Resolve service type from what was actually paid (not skipped)
-            const paidDist = distribution.filter(d => (billSvcChoices[d.bill.id] || 'both') !== 'skip');
             const resolvedServiceType = (() => {
                 if (paidDist.length === 0) return 'tv';
                 const types = new Set();
@@ -154,13 +160,13 @@ const RecordPaymentModal = ({ onClose, preselectedCustomer }) => {
 
             const summaryBill = {
                 customerName: selectedCustomer.name,
-                totalAmount: totalOutstanding,
+                totalAmount: billTotal,
                 amountPaid: cumulativePaid,
-                balance: newOutstanding,
+                balance: Math.max(0, billTotal - cumulativePaid),
                 generatedDate: paymentData.date,
                 serviceType: resolvedServiceType,
                 billNumber: paidDist.length === 1 ? paidDist[0].bill.billNumber : 'MULTIPLE',
-                payments: Array.from({ length: totalPaymentCount }, (_, i) => ({ amount: i === totalPaymentCount - 1 ? totalPaid : 0 }))
+                payments: combinedPayments
             };
             window.open(generateWhatsAppLink(selectedCustomer.phone, formatPaymentMessage(summaryBill, totalPaid, paymentData.date)), '_blank');
         }

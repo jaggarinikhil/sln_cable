@@ -7,10 +7,10 @@ export const generateWhatsAppLink = (phone, message) => {
 const fmtAmt = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
 
 const serviceLabel = (type) => {
-    if (type === 'both') return 'Cable TV + Internet';
+    if (type === 'both') return 'Cable TV & Internet';
     if (type === 'tv') return 'Cable TV';
     if (type === 'internet') return 'Internet';
-    return 'Cable Services';
+    return 'Cable & Internet Services';
 };
 
 const billMonthLabel = (dateStr) => {
@@ -120,6 +120,17 @@ export const formatPaymentMessage = (bill, paymentAmount, paymentDate) => {
 
     const billInfo = b.billNumber && b.billNumber !== 'MULTIPLE' ? `📋 *Bill No :* #${b.billNumber}\n` : '';
 
+    const pastPayments = payments.slice(0, -1);
+    let pastPaymentsStr = '';
+    pastPayments.forEach((p, i) => {
+        const idx = i + 1;
+        let label = `${idx}th payment`;
+        if (idx === 1) label = '1st payment';
+        else if (idx === 2) label = '2nd payment';
+        else if (idx === 3) label = '3rd payment';
+        pastPaymentsStr += `   ${label.padEnd(14, ' ')}: ${fmtAmt(p.amount)}\n`;
+    });
+
     return `*SLN Cable & Internet Services*\n\n` +
         `Dear *${b.customerName || 'Customer'}*,\n\n` +
         `✅ Payment received! Thank you.\n\n` +
@@ -128,8 +139,9 @@ export const formatPaymentMessage = (bill, paymentAmount, paymentDate) => {
         `📡 *Service :* ${serviceLabel(b.serviceType)}\n\n` +
         `━━━━━━━━━━━━━━━━━━━\n` +
         `💳 *Payment Summary:*\n` +
-        `   This Payment  : *${fmtAmt(thisPayment)}*${paymentLabel !== 'Payment' ? ` (${paymentLabel})` : ''}\n` +
         (total > 0 ? `   Total Amount  : ${fmtAmt(total)}\n` : '') +
+        pastPaymentsStr +
+        `   This Payment  : *${fmtAmt(thisPayment)}*${paymentLabel !== 'Payment' ? ` (${paymentLabel})` : ''}\n` +
         (total > 0 ? `   Total Paid    : ${fmtAmt(paid)}\n` : '') +
         `   Balance Due   : *${fmtAmt(Math.max(0, balance))}*\n` +
         (balanceBreakdown ? balanceBreakdown : '') +

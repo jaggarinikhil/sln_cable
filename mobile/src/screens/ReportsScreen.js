@@ -168,28 +168,37 @@ const DailyReport = ({ bills, workHoursData, users }) => {
   const dateStr = toDateStr(date);
 
   const dayBills = useMemo(
-    () => bills.filter((b) => b.date === dateStr || (b.createdAt && b.createdAt.startsWith(dateStr))),
+    () => bills.filter((b) => b.generatedDate === dateStr),
     [bills, dateStr],
   );
 
-  const payments = useMemo(
-    () => dayBills.filter((b) => b.status === 'Paid' || b.status === 'Partial'),
-    [dayBills],
-  );
+  const paymentsToday = useMemo(() => {
+    const list = [];
+    bills.forEach(b => {
+      (b.payments || []).forEach(p => {
+        if (p.date === dateStr) {
+          list.push({ ...p, bill: b });
+        }
+      });
+    });
+    return list;
+  }, [bills, dateStr]);
 
-  const totalBilled = useMemo(() => dayBills.reduce((s, b) => s + (Number(b.amount) || 0), 0), [dayBills]);
-  const totalCollected = useMemo(
-    () => payments.reduce((s, b) => s + (Number(b.paidAmount || b.amount) || 0), 0),
-    [payments],
-  );
-  const tvCollected = useMemo(
-    () => payments.reduce((s, b) => s + (Number(b.tvAmount) || 0), 0),
-    [payments],
-  );
-  const internetCollected = useMemo(
-    () => payments.reduce((s, b) => s + (Number(b.internetAmount) || 0), 0),
-    [payments],
-  );
+  const totalBilled = useMemo(() => dayBills.reduce((s, b) => s + (Number(b.totalAmount) || 0), 0), [dayBills]);
+  const totalCollected = useMemo(() => paymentsToday.reduce((s, p) => s + (Number(p.amount) || 0), 0), [paymentsToday]);
+
+  const { tvCollected, internetCollected } = useMemo(() => {
+    let tv = 0; let net = 0;
+    paymentsToday.forEach((p) => {
+      const b = p.bill;
+      const total = b.totalAmount || 1;
+      const rTv = b.serviceType === 'tv' ? 1 : b.serviceType === 'both' ? ((b.tvAmount || 0) / total) : 0;
+      const rNet = b.serviceType === 'internet' ? 1 : b.serviceType === 'both' ? ((b.internetAmount || 0) / total) : 0;
+      tv += (p.amount || 0) * rTv;
+      net += (p.amount || 0) * rNet;
+    });
+    return { tvCollected: tv, internetCollected: net };
+  }, [paymentsToday]);
 
   const dayHours = useMemo(() => {
     const entries = (workHoursData || []).filter((w) => w.date === dateStr);
@@ -199,9 +208,9 @@ const DailyReport = ({ bills, workHoursData, users }) => {
   // Payment mode breakdown for pie chart
   const modeBreakdown = useMemo(() => {
     const map = {};
-    payments.forEach((b) => {
-      const mode = b.paymentMode || 'Cash';
-      map[mode] = (map[mode] || 0) + (Number(b.paidAmount || b.amount) || 0);
+    paymentsToday.forEach((p) => {
+      const mode = p.mode || 'Cash';
+      map[mode] = (map[mode] || 0) + (Number(p.amount) || 0);
     });
     return Object.entries(map).map(([name, amount], i) => ({
       name,
@@ -210,7 +219,7 @@ const DailyReport = ({ bills, workHoursData, users }) => {
       legendFontColor: colors.textSecondary,
       legendFontSize: 11,
     }));
-  }, [payments]);
+  }, [paymentsToday]);
 
   return (
     <CollapsibleSection title="Daily Report" icon="today" defaultOpen>
@@ -268,7 +277,7 @@ const DailyReport = ({ bills, workHoursData, users }) => {
       )}
 
       {/* Collection breakdown table */}
-      {payments.length > 0 && (
+      {paymentsToday.length > 0 && (
         <View style={styles.tableCard}>
           <Text style={styles.tableTitle}>Collection Breakdown</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -278,14 +287,14 @@ const DailyReport = ({ bills, workHoursData, users }) => {
                   <Text key={h} style={styles.tableHeaderCell}>{h}</Text>
                 ))}
               </View>
-              {payments.map((b, i) => (
-                <View key={b.id || i} style={[styles.tableRow, i % 2 === 0 && styles.tableRowAlt]}>
-                  <Text style={styles.tableCell} numberOfLines={1}>{b.customerName || '—'}</Text>
-                  <Text style={styles.tableCell}>{b.billNumber || b.id?.slice(-6) || '—'}</Text>
-                  <Text style={styles.tableCell}>{fmtCurrency(b.paidAmount || b.amount)}</Text>
-                  <Text style={styles.tableCell}>{b.paymentMode || 'Cash'}</Text>
-                  <Text style={styles.tableCell}>{b.receivedBy || b.generatedBy || '—'}</Text>
-                  <Text style={styles.tableCell}>{b.paymentDate || dateStr}</Text>
+              {paymentsToday.map((p, i) => (
+                <View key={p.id || i} style={[styles.tableRow, i % 2 === 0 && styles.tableRowAlt]}>
+                  <Text style={styles.tableCell} numberOfLines={1}>{p.bill?.customerName || '—'}</Text>
+                  <Text style={styles.tableCell}>{p.bill?.billNumber || '—'}</Text>
+                  <Text style={styles.tableCell}>{fmtCurrency(p.amount)}</Text>
+                  <Text style={styles.tableCell}>{p.mode || 'Cash'}</Text>
+                  <Text style={styles.tableCell}>{p.collectedByName || p.collectedBy || '—'}</Text>
+                  <Text style={styles.tableCell}>{p.date || dateStr}</Text>
                 </View>
               ))}
             </View>
@@ -324,34 +333,52 @@ const CollectionReport = ({ bills }) => {
   const numDays = daysInMonth(year, mon);
 
   const monthBills = useMemo(
-    () =>
-      bills.filter((b) => {
-        const d = b.date || (b.createdAt && b.createdAt.slice(0, 10));
-        return d && d.startsWith(monthStr);
-      }),
+    () => bills.filter((b) => b.generatedDate?.startsWith(monthStr)),
     [bills, monthStr],
   );
 
-  const totalBilled = monthBills.reduce((s, b) => s + (Number(b.amount) || 0), 0);
-  const paidBills = monthBills.filter((b) => b.status === 'Paid' || b.status === 'Partial');
-  const totalCollected = paidBills.reduce((s, b) => s + (Number(b.paidAmount || b.amount) || 0), 0);
+  const paymentsThisMonth = useMemo(() => {
+    const list = [];
+    bills.forEach(b => {
+      (b.payments || []).forEach(p => {
+        if (p.date?.startsWith(monthStr)) {
+          list.push({ ...p, bill: b });
+        }
+      });
+    });
+    return list;
+  }, [bills, monthStr]);
+
+  const totalBilled = monthBills.reduce((s, b) => s + (Number(b.totalAmount) || 0), 0);
+  const totalCollected = paymentsThisMonth.reduce((s, p) => s + (Number(p.amount) || 0), 0);
   const collectionRate = totalBilled > 0 ? ((totalCollected / totalBilled) * 100).toFixed(1) : '0';
-  const tvCollected = paidBills.reduce((s, b) => s + (Number(b.tvAmount) || 0), 0);
-  const internetCollected = paidBills.reduce((s, b) => s + (Number(b.internetAmount) || 0), 0);
+
+  const { tvCollected, internetCollected } = useMemo(() => {
+    let tv = 0; let net = 0;
+    paymentsThisMonth.forEach((p) => {
+      const b = p.bill;
+      const total = b.totalAmount || 1;
+      const rTv = b.serviceType === 'tv' ? 1 : b.serviceType === 'both' ? ((b.tvAmount || 0) / total) : 0;
+      const rNet = b.serviceType === 'internet' ? 1 : b.serviceType === 'both' ? ((b.internetAmount || 0) / total) : 0;
+      tv += (p.amount || 0) * rTv;
+      net += (p.amount || 0) * rNet;
+    });
+    return { tvCollected: tv, internetCollected: net };
+  }, [paymentsThisMonth]);
 
   // Bill status breakdown
   const paidCount = monthBills.filter((b) => b.status === 'Paid').length;
   const partialCount = monthBills.filter((b) => b.status === 'Partial').length;
-  const dueCount = monthBills.filter((b) => b.status === 'Due' || !b.status).length;
+  const dueCount = monthBills.filter((b) => b.status === 'Due' || !b.status || b.status === 'Deleted').length;
 
   // Daily collection for bar chart
   const dailyData = useMemo(() => {
     const map = {};
-    paidBills.forEach((b) => {
-      const d = b.paymentDate || b.date || (b.createdAt && b.createdAt.slice(0, 10));
+    paymentsThisMonth.forEach((p) => {
+      const d = p.date;
       if (!d) return;
       const day = parseInt(d.slice(8, 10), 10);
-      map[day] = (map[day] || 0) + (Number(b.paidAmount || b.amount) || 0);
+      map[day] = (map[day] || 0) + (Number(p.amount) || 0);
     });
     // Show every 5th day label to avoid crowding
     const labels = [];
@@ -361,7 +388,7 @@ const CollectionReport = ({ bills }) => {
       data.push(map[i] || 0);
     }
     return { labels, datasets: [{ data }] };
-  }, [paidBills, numDays]);
+  }, [paymentsThisMonth, numDays]);
 
   return (
     <CollapsibleSection title="Collection Report (Monthly)" icon="calendar">
@@ -450,24 +477,27 @@ const WorkerCollectionReport = ({ bills, users }) => {
   const [month, setMonth] = useState(new Date());
   const monthStr = toMonthStr(month);
 
-  const monthPaidBills = useMemo(
-    () =>
-      bills.filter((b) => {
-        const d = b.paymentDate || b.date || (b.createdAt && b.createdAt.slice(0, 10));
-        return d && d.startsWith(monthStr) && (b.status === 'Paid' || b.status === 'Partial');
-      }),
-    [bills, monthStr],
-  );
+  const paymentsThisMonth = useMemo(() => {
+    const list = [];
+    bills.forEach(b => {
+      (b.payments || []).forEach(p => {
+        if (p.date?.startsWith(monthStr)) {
+          list.push({ ...p, bill: b });
+        }
+      });
+    });
+    return list;
+  }, [bills, monthStr]);
 
   const workerData = useMemo(() => {
     const map = {};
-    monthPaidBills.forEach((b) => {
-      const worker = b.receivedBy || b.generatedBy || 'Unknown';
+    paymentsThisMonth.forEach((p) => {
+      const worker = p.collectedByName || p.collectedBy || 'Unknown';
       if (!map[worker]) map[worker] = { name: worker, total: 0, count: 0, cash: 0, digital: 0 };
-      const amt = Number(b.paidAmount || b.amount) || 0;
+      const amt = Number(p.amount) || 0;
       map[worker].total += amt;
       map[worker].count += 1;
-      const mode = (b.paymentMode || '').toLowerCase();
+      const mode = (p.mode || '').toLowerCase();
       if (mode === 'cash') {
         map[worker].cash += amt;
       } else {
@@ -475,7 +505,7 @@ const WorkerCollectionReport = ({ bills, users }) => {
       }
     });
     return Object.values(map).sort((a, b) => b.total - a.total);
-  }, [monthPaidBills]);
+  }, [paymentsThisMonth]);
 
   const barData = useMemo(() => {
     if (workerData.length === 0) return null;
