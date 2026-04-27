@@ -4,56 +4,68 @@ import { useNavigate } from 'react-router-dom';
 import { Lock, User } from 'lucide-react';
 
 const Login = () => {
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
-    const { login } = useAuth();
-    const navigate = useNavigate();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const { login } = useAuth();
+  const navigate = useNavigate();
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        setError('');
-        const result = login(username, password);
-        if (result.success) {
-            navigate(result.role === 'owner' ? '/dashboard' : '/billing');
-        } else {
-            setError(result.message);
-        }
-    };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setIsLoggingIn(true);
+    try {
+      const result = await login(username.trim(), password);
+      console.log('Login attempt result:', result);
+      if (result.success) {
+        navigate(result.role === 'owner' ? '/dashboard' : '/billing');
+      } else {
+        setError(result.message);
+        setIsLoggingIn(false);
+      }
+    } catch (err) {
+      console.error('Login submit error:', err);
+      setError('An unexpected error occurred. Please try again.');
+      setIsLoggingIn(false);
+    }
+  };
 
-    return (
-        <div className="login-container">
-            <div className="login-card">
-                <h1>SLN CABLE</h1>
-                <p>Billing Management System</p>
+  return (
+    <div className="login-container">
+      <div className="login-card">
+        <h1>SLN CABLE</h1>
+        <p>Billing Management System</p>
 
-                {error && <div className="error-alert">{error}</div>}
+        {error && <div className="error-alert">{error}</div>}
 
-                <form onSubmit={handleSubmit}>
-                    <div className="form-group">
-                        <label><User size={16} /> Username</label>
-                        <input
-                            type="text"
-                            value={username}
-                            onChange={e => setUsername(e.target.value)}
-                            required
-                            autoFocus
-                        />
-                    </div>
-                    <div className="form-group">
-                        <label><Lock size={16} /> Password</label>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={e => setPassword(e.target.value)}
-                            required
-                        />
-                    </div>
-                    <button type="submit" className="login-btn">Login</button>
-                </form>
-            </div>
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label><User size={16} /> Username</label>
+            <input
+              type="text"
+              value={username}
+              onChange={e => setUsername(e.target.value)}
+              required
+              autoFocus
+            />
+          </div>
+          <div className="form-group">
+            <label><Lock size={16} /> Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
+            />
+          </div>
+          <button type="submit" className="login-btn" disabled={isLoggingIn}>
+            {isLoggingIn ? 'Logging in...' : 'Login'}
+          </button>
+        </form>
+      </div>
 
-            <style>{`
+      <style>{`
         .login-container {
           height: 100vh;
           display: flex;
@@ -114,8 +126,8 @@ const Login = () => {
           border: 1px solid rgba(248, 113, 113, 0.2);
         }
       `}</style>
-        </div>
-    );
+    </div>
+  );
 };
 
 export default Login;

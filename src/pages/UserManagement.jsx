@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { storage } from '../utils/storage';
 import { PERMISSIONS, OWNER_PRESET, WORKER_PRESET } from '../utils/permissions';
 import { X, Save, Shield, UserPlus, Lock, Edit2, CheckCircle, XCircle, Crown, Wrench, KeyRound } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useData } from '../context/DataContext';
 
 /* ─── Reset Password Modal ──────────────────────────────────── */
 const ResetPasswordModal = ({ user: targetUser, onClose, onSave }) => {
@@ -371,7 +371,7 @@ const UserModal = ({ user: editingUser, onClose, onSave }) => {
 /* ─── User Management Page ──────────────────────────────────── */
 const UserManagement = () => {
     const { user: currentUser } = useAuth();
-    const [users, setUsers] = useState(storage.getUsers());
+    const { users, addUser, updateUser, loading, salary: rawSalarySnap } = useData();
     const [modalOpen, setModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
     const [resetPasswordUser, setResetPasswordUser] = useState(null);
@@ -379,14 +379,16 @@ const UserManagement = () => {
 
     // Load salary records and compute per-worker balance
     const allSalaries = useMemo(() => {
-        try { return (storage.getSalary() || []).map(r => {
-            // Migrate old format
-            if (r.cashAmount !== undefined || r.digitalAmount !== undefined || r.type === 'advance') return r;
-            const amt = parseFloat(r.amount || 0);
-            const isDigital = r.paymentMode && r.paymentMode !== 'Cash';
-            return { ...r, type: 'salary', cashAmount: isDigital ? 0 : amt, digitalAmount: isDigital ? amt : 0, advanceDeduction: 0 };
-        }); } catch { return []; }
-    }, []);
+        try {
+            return (rawSalarySnap || []).map(r => {
+                // Migrate old format
+                if (r.cashAmount !== undefined || r.digitalAmount !== undefined || r.type === 'advance') return r;
+                const amt = parseFloat(r.amount || 0);
+                const isDigital = r.paymentMode && r.paymentMode !== 'Cash';
+                return { ...r, type: 'salary', cashAmount: isDigital ? 0 : amt, digitalAmount: isDigital ? amt : 0, advanceDeduction: 0 };
+            });
+        } catch { return []; }
+    }, [rawSalarySnap]);
 
     const getWorkerSalaryInfo = (worker) => {
         const startDay = worker.salaryStartDay || 1;
@@ -415,40 +417,47 @@ const UserManagement = () => {
         return { paidThisCycle, outstandingAdvance, balance, monthlySalary, cycleLabel };
     };
 
-    const handleSaveUser = (userData) => {
-        let updated;
-        if (editingUser) {
-            updated = users.map(u => u.id === editingUser.id ? {
-                ...u, ...userData, updatedAt: new Date().toISOString(), updatedBy: currentUser.username
-            } : u);
-        } else {
-            updated = [...users, {
-                ...userData, id: Date.now().toString(),
-                createdAt: new Date().toISOString(), createdBy: currentUser.username
-            }];
+    const handleSaveUser = async (userData) => {
+        try {
+            if (editingUser) {
+                await updateUser(editingUser.username, {
+                    ...userData,
+                    updatedBy: currentUser.username
+                });
+            } else {
+                await addUser({
+                    ...userData,
+                    createdBy: currentUser.username
+                });
+            }
+            setModalOpen(false);
+            setEditingUser(null);
+        } catch (err) {
+            console.error("Error saving user:", err);
+            alert("Failed to save user. Check database rules.");
         }
-        storage.setUsers(updated);
-        setUsers(updated);
-        setModalOpen(false);
-        setEditingUser(null);
     };
 
-    const toggleUserActive = (id) => {
-        const u = users.find(u => u.id === id);
+    const toggleUserActive = async (username) => {
+        const u = users.find(u => u.username === username);
         if (u?.isSuperAdmin) return;
-        const updated = users.map(u => u.id === id ? { ...u, active: !u.active } : u);
-        storage.setUsers(updated);
-        setUsers(updated);
+        try {
+            await updateUser(username, { active: !u.active });
+        } catch (err) {
+            console.error("Error toggling user status:", err);
+        }
     };
 
-    const handleResetPassword = (newPassword) => {
-        const updated = users.map(u => u.id === resetPasswordUser.id
-            ? { ...u, password: newPassword, updatedAt: new Date().toISOString() }
-            : u
-        );
-        storage.setUsers(updated);
-        setUsers(updated);
-        setResetPasswordUser(null);
+    const handleResetPassword = async (newPassword) => {
+        try {
+            await updateUser(resetPasswordUser.username, {
+                password: newPassword
+            });
+            setResetPasswordUser(null);
+        } catch (err) {
+            console.error("Error resetting password:", err);
+            alert("Failed to reset password.");
+        }
     };
 
     const getInitials = (name) => name ? name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : '?';
@@ -542,7 +551,7 @@ const UserManagement = () => {
                             <div className="um-card-right">
                                 <button
                                     className={`um-status-btn ${u.active ? 'active' : 'inactive'}`}
-                                    onClick={() => toggleUserActive(u.id)}
+                                    onClick={() => toggleUserActive(u.username)}
                                     disabled={u.isSuperAdmin}
                                     title={u.isSuperAdmin ? 'Super Admin cannot be disabled' : (u.active ? 'Click to disable' : 'Click to enable')}
                                 >

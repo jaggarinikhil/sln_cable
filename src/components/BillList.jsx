@@ -23,17 +23,19 @@ const BillDetailModal = ({ bill, onClose }) => {
 
     const [editingPaymentIndex, setEditingPaymentIndex] = React.useState(null);
     const [editingPaymentAmount, setEditingPaymentAmount] = React.useState('');
+    const [editingPaymentDate, setEditingPaymentDate] = React.useState('');
 
-    const handleSavePaymentAmount = (paymentIndex) => {
+    const handleSavePaymentAmount = async (paymentIndex) => {
         const newAmount = Number(editingPaymentAmount);
         if (isNaN(newAmount) || newAmount < 0) return;
         const updatedPayments = (bill.payments || []).map((p, i) =>
-            i === paymentIndex ? { ...p, amount: newAmount } : p
+            i === paymentIndex ? { ...p, amount: newAmount, date: editingPaymentDate } : p
         );
         const newAmountPaid = updatedPayments.reduce((s, p) => s + (p.amount || 0), 0);
-        const newBalance = bill.totalAmount - newAmountPaid;
+        const newBalance = (bill.totalAmount || 0) - newAmountPaid;
         const newStatus = newBalance <= 0 ? 'Paid' : newAmountPaid > 0 ? 'Partial' : 'Due';
-        updateBill(bill.id, {
+
+        await updateBill(bill.id, {
             payments: updatedPayments,
             amountPaid: newAmountPaid,
             balance: newBalance,
@@ -237,24 +239,43 @@ const BillDetailModal = ({ bill, onClose }) => {
                                             </div>
                                             <div>
                                                 {isOwner && editingPaymentIndex === i ? (
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                        <input
-                                                            type="number"
-                                                            className="bd-edit-input"
-                                                            style={{ width: 90, padding: '4px 8px', fontSize: '0.85rem' }}
-                                                            value={editingPaymentAmount}
-                                                            onChange={e => setEditingPaymentAmount(e.target.value)}
-                                                            autoFocus
-                                                            min="0"
-                                                        />
-                                                        <button className="bd-edit-btn" style={{ padding: '3px 10px', fontSize: '0.75rem' }} onClick={() => handleSavePaymentAmount(i)}>Save</button>
-                                                        <button className="bd-edit-cancel bd-edit-btn" style={{ padding: '3px 10px', fontSize: '0.75rem' }} onClick={() => setEditingPaymentIndex(null)}>✕</button>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%' }}>
+                                                        <div className="bd-payment-edit-grid">
+                                                            <div className="bd-edit-row">
+                                                                <label style={{ fontSize: '0.65rem' }}>Amount (₹)</label>
+                                                                <input
+                                                                    type="number"
+                                                                    className="bd-edit-input"
+                                                                    value={editingPaymentAmount}
+                                                                    onChange={e => setEditingPaymentAmount(e.target.value)}
+                                                                    autoFocus
+                                                                    min="0"
+                                                                />
+                                                            </div>
+                                                            <div className="bd-edit-row">
+                                                                <label style={{ fontSize: '0.65rem' }}>Date</label>
+                                                                <input
+                                                                    type="date"
+                                                                    className="bd-edit-input"
+                                                                    value={editingPaymentDate}
+                                                                    onChange={e => setEditingPaymentDate(e.target.value)}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <div style={{ display: 'flex', gap: 6 }}>
+                                                            <button className="bd-edit-btn" style={{ padding: '4px 12px', fontSize: '0.75rem', flex: 1 }} onClick={() => handleSavePaymentAmount(i)}>Save</button>
+                                                            <button className="bd-edit-cancel bd-edit-btn" style={{ padding: '4px 12px', fontSize: '0.75rem', flex: 1 }} onClick={() => setEditingPaymentIndex(null)}>✕</button>
+                                                        </div>
                                                     </div>
                                                 ) : (
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                                         <div className="bd-payment-amt">₹{(p.amount || 0).toLocaleString('en-IN')}</div>
                                                         {isOwner && (
-                                                            <button className="bd-edit-btn" style={{ padding: '2px 8px', fontSize: '0.7rem' }} onClick={() => { setEditingPaymentIndex(i); setEditingPaymentAmount(p.amount || 0); }}>Edit</button>
+                                                            <button className="bd-edit-btn" style={{ padding: '2px 8px', fontSize: '0.7rem' }} onClick={() => {
+                                                                setEditingPaymentIndex(i);
+                                                                setEditingPaymentAmount(p.amount || 0);
+                                                                setEditingPaymentDate(p.date || '');
+                                                            }}>Edit</button>
                                                         )}
                                                     </div>
                                                 )}
@@ -456,6 +477,18 @@ const BillDetailModal = ({ bill, onClose }) => {
                 .bd-edit-total { font-size: 0.88rem; font-weight: 700; color: var(--accent); text-align: right; padding: 2px 0; }
                 .bd-save-btn { display: flex; align-items: center; justify-content: center; width: 100%; padding: 11px; background: var(--accent-gradient); border: none; color: white; border-radius: 11px; font-size: 0.88rem; font-weight: 700; cursor: pointer; font-family: inherit; transition: all 0.2s; box-shadow: 0 3px 12px rgba(99,102,241,0.3); margin-top: 2px; }
                 .bd-save-btn:hover { transform: translateY(-1px); box-shadow: 0 5px 16px rgba(99,102,241,0.4); }
+                .bd-payment-edit-grid {
+                    display: grid;
+                    grid-template-columns: 100px 1fr;
+                    gap: 8px;
+                    width: 100%;
+                    margin-bottom: 4px;
+                }
+                @media (max-width: 480px) {
+                    .bd-payment-edit-grid {
+                        grid-template-columns: 1fr;
+                    }
+                }
             `}</style>
         </div>
     );

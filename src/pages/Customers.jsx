@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useData } from '../context/DataContext';
+import { useAuth } from '../context/AuthContext';
 import CustomerModal from '../components/CustomerModal';
 import {
     Search, UserPlus, Phone, MapPin, Tv, Wifi,
@@ -11,6 +12,7 @@ const PAGE_SIZE = 20;
 
 const Customers = () => {
     const { customers, bills, addCustomer, addBill } = useData();
+    const { user } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
     const [search, setSearch] = useState('');
@@ -57,7 +59,15 @@ const Customers = () => {
     const handleSave = (data, billSpec) => {
         const newId = addCustomer(data);
         if (billSpec) {
-            addBill({ ...billSpec, customerId: newId, customerName: data.name, phone: data.phone, boxNumber: data.boxNumber || '' });
+            addBill({
+                ...billSpec,
+                customerId: newId,
+                customerName: data.name,
+                phone: data.phone,
+                boxNumber: data.boxNumber || '',
+                generatedBy: user?.username || user?.userId || 'admin',
+                generatedByName: user?.name || 'Admin'
+            });
         }
         setModalOpen(false);
         setPrefillName('');

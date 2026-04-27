@@ -1,4 +1,18 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { db } from '../utils/firebase';
+import {
+    collection,
+    onSnapshot,
+    addDoc,
+    updateDoc,
+    doc,
+    query,
+    orderBy,
+    setDoc,
+    getDocs,
+    getDoc,
+    deleteDoc
+} from 'firebase/firestore';
 import { storage } from '../utils/storage';
 
 const DataContext = createContext(null);
@@ -11,89 +25,195 @@ export const DataProvider = ({ children }) => {
     const [workHours, setWorkHours] = useState([]);
     const [salary, setSalary] = useState([]);
     const [users, setUsers] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    // One-time migration helper
+    const migrateIfEmpty = async (colName, localData) => {
+        if (!localData || localData.length === 0) return;
+
+        console.log(`Checking migration for ${colName}...`);
+        for (const item of localData) {
+            const id = colName === 'users' ? (item.username || item.id) : (item.id || Date.now().toString());
+            if (!id) continue;
+
+            const docRef = doc(db, colName, id);
+            const docSnap = await getDoc(docRef);
+
+            if (!docSnap.exists()) {
+                console.log(`Migrating missing item ${id} to ${colName}...`);
+                await setDoc(docRef, {
+                    ...item,
+                    migratedAt: new Date().toISOString()
+                });
+            }
+        }
+    };
 
     useEffect(() => {
-        const stored = storage.getCustomers();
-        const normalized = stored.map(c => ({
-            ...c,
-            services: c.services || {
-                tv: { active: !!c.boxNumber, monthlyRate: 300, installationFee: 0 },
-                internet: { active: false, monthlyRate: 0, installationFee: 0 }
+        // Initial migration check
+        const runMigration = async () => {
+            try {
+                await migrateIfEmpty('users', storage.getUsers());
+                await migrateIfEmpty('customers', storage.getCustomers());
+                await migrateIfEmpty('bills', storage.getBills());
+                await migrateIfEmpty('complaints', storage.getComplaints());
+                await migrateIfEmpty('handovers', storage.getHandovers());
+                await migrateIfEmpty('workHours', storage.getWorkHours());
+                await migrateIfEmpty('salary', storage.getSalary());
+            } catch (err) {
+                console.error("Migration error:", err);
             }
-        }));
-        setCustomers(normalized);
-        setBills(storage.getBills());
-        setComplaints(storage.getComplaints());
-        setHandovers(storage.getHandovers());
-        setWorkHours(storage.getWorkHours());
-        setSalary(storage.getSalary());
-        setUsers(storage.getUsers());
+        };
+        runMigration();
+
+        // Subscriptions
+        const subs = [
+            onSnapshot(collection(db, 'customers'), (snap) => {
+                setCustomers(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+            }),
+            onSnapshot(query(collection(db, 'bills'), orderBy('createdAt', 'desc')), (snap) => {
+                setBills(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+            }),
+            onSnapshot(query(collection(db, 'complaints'), orderBy('createdAt', 'desc')), (snap) => {
+                setComplaints(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+            }),
+            onSnapshot(collection(db, 'handovers'), (snap) => {
+                setHandovers(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+            }),
+            onSnapshot(collection(db, 'workHours'), (snap) => {
+                setWorkHours(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+            }),
+            onSnapshot(collection(db, 'salary'), (snap) => {
+                setSalary(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+            }),
+            onSnapshot(collection(db, 'users'), (snap) => {
+                setUsers(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+            })
+        ];
+
+        setLoading(false);
+        return () => subs.forEach(unsub => unsub());
     }, []);
 
-    const refreshData = () => {
-        setCustomers(storage.getCustomers());
-        setBills(storage.getBills());
-        setComplaints(storage.getComplaints());
-        setHandovers(storage.getHandovers());
-        setWorkHours(storage.getWorkHours());
-        setSalary(storage.getSalary());
-        setUsers(storage.getUsers());
+    const addCustomer = async (customer) => {
+        const docRef = await addDoc(collection(db, 'customers'), {
+            ...customer,
+            createdAt: new Date().toISOString()
+        });
+        return docRef.id;
     };
 
-    const addCustomer = (customer) => {
-        const newId = Date.now().toString();
-        const updated = [...customers, { ...customer, id: newId, createdAt: new Date().toISOString() }];
-        storage.setCustomers(updated);
-        setCustomers(updated);
-        return newId;
+    const updateCustomer = async (id, updates) => {
+        await updateDoc(doc(db, 'customers', id), {
+            ...updates,
+            updatedAt: new Date().toISOString()
+        });
     };
 
-    const updateCustomer = (id, updates) => {
-        const updated = customers.map(c => c.id === id ? { ...c, ...updates, updatedAt: new Date().toISOString() } : c);
-        storage.setCustomers(updated);
-        setCustomers(updated);
+    const addBill = async (bill) => {
+        await addDoc(collection(db, 'bills'), {
+            ...bill,
+            createdAt: new Date().toISOString(),
+            modifiedCount: 0
+        });
     };
 
-    const addBill = (bill) => {
-        const updated = [...bills, { ...bill, id: Date.now().toString(), createdAt: new Date().toISOString(), modifiedCount: 0 }];
-        storage.setBills(updated);
-        setBills(updated);
+    const updateBill = async (id, updates) => {
+        await updateDoc(doc(db, 'bills', id), {
+            ...updates,
+            updatedAt: new Date().toISOString()
+        });
     };
 
-    const updateBill = (id, updates) => {
-        const updated = bills.map(b => b.id === id ? { ...b, ...updates, updatedAt: new Date().toISOString() } : b);
-        storage.setBills(updated);
-        setBills(updated);
-    };
-
-    // Apply multiple bill updates atomically (avoids stale-closure bug when looping)
-    const updateMultipleBills = (updatesList) => {
-        // updatesList: [{ id, updates }, ...]
+    const updateMultipleBills = async (updatesList) => {
         const ts = new Date().toISOString();
-        let updated = bills;
         for (const { id, updates } of updatesList) {
-            updated = updated.map(b => b.id === id ? { ...b, ...updates, updatedAt: ts } : b);
+            await updateDoc(doc(db, 'bills', id), {
+                ...updates,
+                updatedAt: ts
+            });
         }
-        storage.setBills(updated);
-        setBills(updated);
     };
 
-    const addComplaint = (complaint) => {
-        const updated = [...complaints, { ...complaint, id: Date.now().toString(), createdAt: new Date().toISOString(), status: 'Pending' }];
-        storage.setComplaints(updated);
-        setComplaints(updated);
+    const addComplaint = async (complaint) => {
+        await addDoc(collection(db, 'complaints'), {
+            ...complaint,
+            createdAt: new Date().toISOString(),
+            status: 'Pending'
+        });
     };
 
-    const updateComplaintStatus = (id, status) => {
-        const updated = complaints.map(c => c.id === id ? { ...c, status, updatedAt: new Date().toISOString() } : c);
-        storage.setComplaints(updated);
-        setComplaints(updated);
+    const updateComplaintStatus = async (id, status) => {
+        await updateDoc(doc(db, 'complaints', id), {
+            status,
+            updatedAt: new Date().toISOString()
+        });
     };
 
-    const updateComplaint = (id, updates) => {
-        const updated = complaints.map(c => c.id === id ? { ...c, ...updates, updatedAt: new Date().toISOString() } : c);
-        storage.setComplaints(updated);
-        setComplaints(updated);
+    const updateComplaint = async (id, updates) => {
+        await updateDoc(doc(db, 'complaints', id), {
+            ...updates,
+            updatedAt: new Date().toISOString()
+        });
+    };
+
+    const addUser = async (userData) => {
+        // Use username as doc ID for AuthContext compatibility
+        const username = userData.username;
+        await setDoc(doc(db, 'users', username), {
+            ...userData,
+            createdAt: new Date().toISOString()
+        });
+    };
+
+    const updateUser = async (originalUsername, updates) => {
+        const userRef = doc(db, 'users', originalUsername);
+
+        if (updates.username && updates.username !== originalUsername) {
+            // Username changed: create new doc, then delete old one
+            await setDoc(doc(db, 'users', updates.username), {
+                ...updates,
+                updatedAt: new Date().toISOString()
+            });
+            await deleteDoc(userRef);
+        } else {
+            await updateDoc(userRef, {
+                ...updates,
+                updatedAt: new Date().toISOString()
+            });
+        }
+    };
+
+    const deleteUser = async (username) => {
+        await deleteDoc(doc(db, 'users', username));
+    };
+
+    const addWorkHours = async (entry) => {
+        await addDoc(collection(db, 'workHours'), {
+            ...entry,
+            createdAt: new Date().toISOString()
+        });
+    };
+
+    const updateWorkHours = async (id, updates) => {
+        await updateDoc(doc(db, 'workHours', id), {
+            ...updates,
+            updatedAt: new Date().toISOString()
+        });
+    };
+
+    const addSalary = async (record) => {
+        await addDoc(collection(db, 'salary'), {
+            ...record,
+            createdAt: new Date().toISOString()
+        });
+    };
+
+    const updateSalary = async (id, updates) => {
+        await updateDoc(doc(db, 'salary', id), {
+            ...updates,
+            updatedAt: new Date().toISOString()
+        });
     };
 
     return (
@@ -101,8 +221,11 @@ export const DataProvider = ({ children }) => {
             customers, addCustomer, updateCustomer,
             bills, addBill, updateBill, updateMultipleBills,
             complaints, addComplaint, updateComplaintStatus, updateComplaint,
-            handovers, workHours, salary,
-            users, refreshData
+            users, addUser, updateUser,
+            handovers,
+            workHours, addWorkHours, updateWorkHours,
+            salary, addSalary, updateSalary,
+            loading
         }}>
             {children}
         </DataContext.Provider>

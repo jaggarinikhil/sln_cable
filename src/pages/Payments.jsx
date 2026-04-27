@@ -18,7 +18,7 @@ const RecordPaymentModal = ({ onClose, preselectedCustomer }) => {
     const [selectedCustomer, setSelectedCustomer] = useState(preselectedCustomer || null);
     const [paymentData, setPaymentData] = useState({
         amount: '', date: new Date().toISOString().split('T')[0],
-        mode: 'Cash', billBookNumber: '', collectedBy: user.userId
+        mode: 'Cash', billBookNumber: '', collectedBy: user?.username || user?.userId || ''
     });
     // { [billId]: 'tv' | 'internet' | 'both' } — only relevant for serviceType==='both' bills
     const [billSvcChoices, setBillSvcChoices] = useState({});
@@ -360,7 +360,14 @@ const RecordPaymentModal = ({ onClose, preselectedCustomer }) => {
                                 </div>
                                 <div className="form-group">
                                     <label>Collected By</label>
-                                    <select value={paymentData.collectedBy} onChange={e => setPaymentData(p => ({ ...p, collectedBy: e.target.value }))}>
+                                    <select
+                                        value={paymentData.collectedBy}
+                                        onChange={e => setPaymentData(p => ({ ...p, collectedBy: e.target.value }))}
+                                        disabled={user?.role?.toLowerCase() !== 'owner'}
+                                    >
+                                        {!users.find(u => u.id === paymentData.collectedBy) && user && (
+                                            <option value={user.username || user.userId}>{user.name} (Current)</option>
+                                        )}
                                         {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                                     </select>
                                 </div>
@@ -447,7 +454,7 @@ const PendingBillsTable = ({ bills, customers, onCollect, dateMode, singleDate, 
                 </div>
                 <div className="bl-summary">
                     <span className="bl-sum-item"><span className="bl-sum-label">{filtered.length} pending</span></span>
-                    <span className="bl-sum-item">Outstanding <strong style={{ color: '#ef4444' }}>₹{filtered.reduce((s, b) => s + (b.balance || 0), 0).toLocaleString('en-IN')}</strong></span>
+                    <span className="bl-sum-item">Outstanding <strong className="text-due">₹{filtered.reduce((s, b) => s + (b.balance || 0), 0).toLocaleString('en-IN')}</strong></span>
                 </div>
             </div>
 
@@ -523,29 +530,32 @@ const PendingBillsTable = ({ bills, customers, onCollect, dateMode, singleDate, 
                     <p style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.84rem', padding: '16px 0' }}>
                         {search ? 'No results.' : 'No pending bills!'}
                     </p>
-                ) : filtered.map((b, i) => (
-                    <div key={b.id} className="bl-txn-card">
-                        <div className="bl-txn-card-top">
-                            <div>
-                                <div className="bl-txn-card-name">{b.customerName}</div>
-                                <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: 2 }}>
-                                    Bill #{b.billNumber} · {new Date(b.generatedDate + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                ) : filtered.map((b, i) => {
+                    const cust = customers.find(c => c.id === b.customerId);
+                    return (
+                        <div key={b.id} className="bl-txn-card">
+                            <div className="bl-txn-card-top">
+                                <div>
+                                    <div className="bl-txn-card-name">{b.customerName}</div>
+                                    <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+                                        Bill #{b.billNumber} · {new Date(b.generatedDate + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                    </div>
                                 </div>
+                                <span className="bl-txn-card-amt text-due">₹{(b.balance || 0).toLocaleString('en-IN')}</span>
                             </div>
-                            <span className="bl-txn-card-amt" style={{ color: '#ef4444' }}>₹{(b.balance || 0).toLocaleString('en-IN')}</span>
-                        </div>
-                        <div className="bl-txn-card-meta" style={{ justifyContent: 'space-between' }}>
-                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                                <span className="bl-txn-meta-tag">Billed ₹{(b.totalAmount || 0).toLocaleString('en-IN')}</span>
-                                {b.amountPaid > 0 && <span className="bl-txn-meta-tag paid">Paid ₹{(b.amountPaid || 0).toLocaleString('en-IN')}</span>}
-                                <span className={`status-pill status-${(b.status || 'due').toLowerCase()}`}>{b.status}</span>
+                            <div className="bl-txn-card-meta" style={{ justifyContent: 'space-between' }}>
+                                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                    <span className="bl-txn-meta-tag">Billed ₹{(b.totalAmount || 0).toLocaleString('en-IN')}</span>
+                                    {b.amountPaid > 0 && <span className="bl-txn-meta-tag paid">Paid ₹{(b.amountPaid || 0).toLocaleString('en-IN')}</span>}
+                                    <span className={`status-pill status-${(b.status || 'due').toLowerCase()}`}>{b.status}</span>
+                                </div>
+                                <button className="pbt-collect-btn" onClick={() => onCollect(cust || { id: b.customerId, name: b.customerName, phone: b.phone })}>Collect</button>
                             </div>
-                            <button className="pbt-collect-btn" onClick={onCollect}>Collect</button>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
-        </div>
+        </div >
     );
 };
 

@@ -1,27 +1,27 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { storage } from '../utils/storage';
+import { useData } from '../context/DataContext';
 import { Clock, Calendar, Sun, Moon, CalendarX, Briefcase, ChevronDown, ChevronUp, TrendingUp, BarChart2, Edit2, Check, X as XIcon } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 const SHIFT_META = {
-    morning: { label: 'Morning',  Icon: Sun,       color: '#f59e0b', bg: 'rgba(245,158,11,0.1)',  border: 'rgba(245,158,11,0.3)'  },
-    evening: { label: 'Evening',  Icon: Moon,      color: '#8b5cf6', bg: 'rgba(139,92,246,0.1)',  border: 'rgba(139,92,246,0.3)'  },
-    full:    { label: 'Full Day', Icon: Briefcase, color: '#10b981', bg: 'rgba(16,185,129,0.1)',  border: 'rgba(16,185,129,0.3)'  },
-    leave:   { label: 'Leave',   Icon: CalendarX, color: '#ef4444', bg: 'rgba(239,68,68,0.1)',   border: 'rgba(239,68,68,0.3)'   },
+    morning: { label: 'Morning', Icon: Sun, color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.3)' },
+    evening: { label: 'Evening', Icon: Moon, color: '#8b5cf6', bg: 'rgba(139,92,246,0.1)', border: 'rgba(139,92,246,0.3)' },
+    full: { label: 'Full Day', Icon: Briefcase, color: '#10b981', bg: 'rgba(16,185,129,0.1)', border: 'rgba(16,185,129,0.3)' },
+    leave: { label: 'Leave', Icon: CalendarX, color: '#ef4444', bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.3)' },
 };
 
 const LEAVE_TYPES = ['Sick Leave', 'Casual Leave', 'Holiday', 'Half Day', 'Unpaid Leave', 'Other'];
 
 const WORKER_PALETTES = [
-    { color: '#6366f1', bg: 'rgba(99,102,241,0.12)',  border: 'rgba(99,102,241,0.35)',  shadow: 'rgba(99,102,241,0.25)'  },
-    { color: '#10b981', bg: 'rgba(16,185,129,0.12)',  border: 'rgba(16,185,129,0.35)',  shadow: 'rgba(16,185,129,0.25)'  },
-    { color: '#f59e0b', bg: 'rgba(245,158,11,0.12)',  border: 'rgba(245,158,11,0.35)',  shadow: 'rgba(245,158,11,0.25)'  },
-    { color: '#ec4899', bg: 'rgba(236,72,153,0.12)',  border: 'rgba(236,72,153,0.35)',  shadow: 'rgba(236,72,153,0.25)'  },
-    { color: '#06b6d4', bg: 'rgba(6,182,212,0.12)',   border: 'rgba(6,182,212,0.35)',   shadow: 'rgba(6,182,212,0.25)'   },
-    { color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)',  border: 'rgba(139,92,246,0.35)',  shadow: 'rgba(139,92,246,0.25)'  },
-    { color: '#ef4444', bg: 'rgba(239,68,68,0.12)',   border: 'rgba(239,68,68,0.35)',   shadow: 'rgba(239,68,68,0.25)'   },
-    { color: '#84cc16', bg: 'rgba(132,204,22,0.12)',  border: 'rgba(132,204,22,0.35)',  shadow: 'rgba(132,204,22,0.25)'  },
+    { color: '#6366f1', bg: 'rgba(99,102,241,0.12)', border: 'rgba(99,102,241,0.35)', shadow: 'rgba(99,102,241,0.25)' },
+    { color: '#10b981', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.35)', shadow: 'rgba(16,185,129,0.25)' },
+    { color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.35)', shadow: 'rgba(245,158,11,0.25)' },
+    { color: '#ec4899', bg: 'rgba(236,72,153,0.12)', border: 'rgba(236,72,153,0.35)', shadow: 'rgba(236,72,153,0.25)' },
+    { color: '#06b6d4', bg: 'rgba(6,182,212,0.12)', border: 'rgba(6,182,212,0.35)', shadow: 'rgba(6,182,212,0.25)' },
+    { color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)', border: 'rgba(139,92,246,0.35)', shadow: 'rgba(139,92,246,0.25)' },
+    { color: '#ef4444', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.35)', shadow: 'rgba(239,68,68,0.25)' },
+    { color: '#84cc16', bg: 'rgba(132,204,22,0.12)', border: 'rgba(132,204,22,0.35)', shadow: 'rgba(132,204,22,0.25)' },
 ];
 
 // YYYY-MM-DD in local timezone (avoids UTC shift bugs)
@@ -79,17 +79,17 @@ const getCycles = (startDay, count = 6) => {
 const shiftDefaults = {
     morning: { entryTime: '09:00', exitTime: '13:00' },
     evening: { entryTime: '15:30', exitTime: '21:00' },
-    full:    { entryTime: '09:00', exitTime: '21:00' },
-    leave:   { entryTime: '',      exitTime: ''       },
+    full: { entryTime: '09:00', exitTime: '21:00' },
+    leave: { entryTime: '', exitTime: '' },
 };
 
 const WorkHours = () => {
     const { user } = useAuth();
     const isOwner = user?.role?.toLowerCase() === 'owner';
 
-    const [allHours, setAllHours] = useState(() => storage.getWorkHours());
+    const { users, workHours: allHours, addWorkHours, updateWorkHours } = useData();
 
-    const allUsers = React.useMemo(() => storage.getUsers().filter(u => u.active), []);
+    const allUsers = React.useMemo(() => users.filter(u => u.active), [users]);
     const workers = isOwner ? allUsers.filter(u => u.role?.toLowerCase() !== 'owner') : [];
 
     const paletteMap = React.useMemo(() => {
@@ -148,7 +148,7 @@ const WorkHours = () => {
         setForm(f => ({ ...f, shift, ...shiftDefaults[shift] }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         const duplicate = allHours.find(h =>
             h.userId === activeUserId && h.date === form.date && h.shift === form.shift
@@ -160,23 +160,20 @@ const WorkHours = () => {
 
         const loggedUser = isOwner ? activeUserData : null;
         const newEntry = {
-            id: Date.now().toString(),
             userId: activeUserId,
             userName: isOwner ? (loggedUser?.name || activeUserName) : user.name,
             date: form.date,
             shift: form.shift,
-            entryTime:  isLeave ? '' : form.entryTime,
-            exitTime:   isLeave ? '' : form.exitTime,
-            leaveType:  isLeave ? form.leaveType : '',
+            entryTime: isLeave ? '' : form.entryTime,
+            exitTime: isLeave ? '' : form.exitTime,
+            leaveType: isLeave ? form.leaveType : '',
             notes: form.notes.trim(),
             hours: isLeave ? 0 : toMinutes(form.entryTime, form.exitTime) / 60,
             loggedBy: user.userId,
             createdAt: new Date().toISOString(),
         };
 
-        const updated = [...allHours, newEntry];
-        storage.setWorkHours(updated);
-        setAllHours(updated);
+        await addWorkHours(newEntry);
         setForm(f => ({ ...f, date: todayStr, notes: '' }));
         setSaved(true);
         setTimeout(() => { setSaved(false); setDialogOpen(false); }, 1400);
@@ -199,25 +196,19 @@ const WorkHours = () => {
         setEditForm(null);
     };
 
-    const saveEdit = (entryId) => {
+    const saveEdit = async (entryId) => {
         const ef = editForm;
         const isLv = ef.shift === 'leave';
-        const updated = allHours.map(h => {
-            if (h.id !== entryId) return h;
-            return {
-                ...h,
-                shift: ef.shift,
-                entryTime: isLv ? '' : ef.entryTime,
-                exitTime: isLv ? '' : ef.exitTime,
-                leaveType: isLv ? ef.leaveType : '',
-                notes: ef.notes.trim(),
-                hours: isLv ? 0 : toMinutes(ef.entryTime, ef.exitTime) / 60,
-                updatedAt: new Date().toISOString(),
-                updatedBy: user.userId,
-            };
-        });
-        storage.setWorkHours(updated);
-        setAllHours(updated);
+        const updates = {
+            shift: ef.shift,
+            entryTime: isLv ? '' : ef.entryTime,
+            exitTime: isLv ? '' : ef.exitTime,
+            leaveType: isLv ? ef.leaveType : '',
+            notes: ef.notes.trim(),
+            hours: isLv ? 0 : toMinutes(ef.entryTime, ef.exitTime) / 60,
+            updatedBy: user.userId,
+        };
+        await updateWorkHours(entryId, updates);
         setEditingEntryId(null);
         setEditForm(null);
     };
@@ -363,212 +354,212 @@ const WorkHours = () => {
                 </div>
             ) : <>
 
-            {/* Stats Dashboard */}
-            <div className="wh-stats" style={{ '--wc': activePalette.color, '--wbg': activePalette.bg, '--wborder': activePalette.border }}>
-                <div className="wh-stat-card">
-                    <div className="wh-stat-icon"><BarChart2 size={18} /></div>
-                    <div className="wh-stat-body">
-                        <div className="wh-stat-value">{daysWorked}</div>
-                        <div className="wh-stat-label">Days Worked</div>
+                {/* Stats Dashboard */}
+                <div className="wh-stats" style={{ '--wc': activePalette.color, '--wbg': activePalette.bg, '--wborder': activePalette.border }}>
+                    <div className="wh-stat-card">
+                        <div className="wh-stat-icon"><BarChart2 size={18} /></div>
+                        <div className="wh-stat-body">
+                            <div className="wh-stat-value">{daysWorked}</div>
+                            <div className="wh-stat-label">Days Worked</div>
+                        </div>
+                    </div>
+                    <div className="wh-stat-card">
+                        <div className="wh-stat-icon"><Clock size={18} /></div>
+                        <div className="wh-stat-body">
+                            <div className="wh-stat-value">{fmtMins(totalMins)}</div>
+                            <div className="wh-stat-label">Total Hours</div>
+                        </div>
+                    </div>
+                    <div className="wh-stat-card">
+                        <div className="wh-stat-icon"><TrendingUp size={18} /></div>
+                        <div className="wh-stat-body">
+                            <div className="wh-stat-value">{daysWorked > 0 ? fmtMins(avgMins) : '—'}</div>
+                            <div className="wh-stat-label">Avg / Day</div>
+                        </div>
+                    </div>
+                    <div className="wh-stat-card">
+                        <div className="wh-stat-icon"><CalendarX size={18} /></div>
+                        <div className="wh-stat-body">
+                            <div className="wh-stat-value">{leaveEntries.length}</div>
+                            <div className="wh-stat-label">Leaves</div>
+                        </div>
                     </div>
                 </div>
-                <div className="wh-stat-card">
-                    <div className="wh-stat-icon"><Clock size={18} /></div>
-                    <div className="wh-stat-body">
-                        <div className="wh-stat-value">{fmtMins(totalMins)}</div>
-                        <div className="wh-stat-label">Total Hours</div>
-                    </div>
-                </div>
-                <div className="wh-stat-card">
-                    <div className="wh-stat-icon"><TrendingUp size={18} /></div>
-                    <div className="wh-stat-body">
-                        <div className="wh-stat-value">{daysWorked > 0 ? fmtMins(avgMins) : '—'}</div>
-                        <div className="wh-stat-label">Avg / Day</div>
-                    </div>
-                </div>
-                <div className="wh-stat-card">
-                    <div className="wh-stat-icon"><CalendarX size={18} /></div>
-                    <div className="wh-stat-body">
-                        <div className="wh-stat-value">{leaveEntries.length}</div>
-                        <div className="wh-stat-label">Leaves</div>
-                    </div>
-                </div>
-            </div>
 
-            {/* Cycle filter */}
-            <div className="wh-period-bar">
-                <span className="wh-period-label">Cycle:</span>
-                <select
-                    className="wh-cycle-select"
-                    value={selectedCycleKey === '_current_' ? (cycles[0]?.key || 'all') : selectedCycleKey}
-                    onChange={e => setSelectedCycleKey(e.target.value)}
-                    style={{
-                        background: 'var(--bg-card)',
-                        border: `1.5px solid ${activePalette.border}`,
-                        color: activePalette.color,
-                        borderRadius: 10,
-                        padding: '7px 32px 7px 12px',
-                        fontSize: '0.85rem',
-                        fontWeight: 600,
-                        outline: 'none',
-                        cursor: 'pointer',
-                        appearance: 'none',
-                        WebkitAppearance: 'none',
-                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
-                        backgroundRepeat: 'no-repeat',
-                        backgroundPosition: 'right 10px center',
-                    }}
-                >
-                    <option value="all">All Time</option>
-                    {cycles.map(c => (
-                        <option key={c.key} value={c.key}>{c.label}</option>
-                    ))}
-                </select>
-            </div>
+                {/* Cycle filter */}
+                <div className="wh-period-bar">
+                    <span className="wh-period-label">Cycle:</span>
+                    <select
+                        className="wh-cycle-select"
+                        value={selectedCycleKey === '_current_' ? (cycles[0]?.key || 'all') : selectedCycleKey}
+                        onChange={e => setSelectedCycleKey(e.target.value)}
+                        style={{
+                            background: 'var(--bg-card)',
+                            border: `1.5px solid ${activePalette.border}`,
+                            color: activePalette.color,
+                            borderRadius: 10,
+                            padding: '7px 32px 7px 12px',
+                            fontSize: '0.85rem',
+                            fontWeight: 600,
+                            outline: 'none',
+                            cursor: 'pointer',
+                            appearance: 'none',
+                            WebkitAppearance: 'none',
+                            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+                            backgroundRepeat: 'no-repeat',
+                            backgroundPosition: 'right 10px center',
+                        }}
+                    >
+                        <option value="all">All Time</option>
+                        {cycles.map(c => (
+                            <option key={c.key} value={c.key}>{c.label}</option>
+                        ))}
+                    </select>
+                </div>
 
-            {/* Today Banner + Log Button */}
-            {(() => {
-                const todayLogs = myHours.filter(h => h.date === todayStr);
-                const todayDisplay = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
-                const doneShifts = todayLogs.map(h => h.shift);
-                const hasMorning = doneShifts.includes('morning');
-                const hasEvening = doneShifts.includes('evening');
-                const hasFull    = doneShifts.includes('full');
-                const hasLeave   = doneShifts.includes('leave');
-                const allDone    = hasFull || (hasMorning && hasEvening);
-                return (
-                    <div className="wh-today-banner" onClick={() => { setForm(f => ({ ...f, date: todayStr })); setDialogOpen(true); }}
-                        style={{ '--wc': activePalette.color, '--wbg': activePalette.bg, '--wborder': activePalette.border }}>
-                        <div className="wh-today-left">
-                            <div className="wh-today-date"><Calendar size={13} /> {todayDisplay}</div>
-                            {todayLogs.length > 0 ? (
-                                <div className="wh-today-shifts">
-                                    {hasMorning && <span className="wh-shift-pill wh-shift-morning">Morning</span>}
-                                    {hasEvening && <span className="wh-shift-pill wh-shift-evening">Evening</span>}
-                                    {hasFull    && <span className="wh-shift-pill wh-shift-full">Full Day</span>}
-                                    {hasLeave   && <span className="wh-shift-pill wh-shift-leave">Leave</span>}
+                {/* Today Banner + Log Button */}
+                {(() => {
+                    const todayLogs = myHours.filter(h => h.date === todayStr);
+                    const todayDisplay = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
+                    const doneShifts = todayLogs.map(h => h.shift);
+                    const hasMorning = doneShifts.includes('morning');
+                    const hasEvening = doneShifts.includes('evening');
+                    const hasFull = doneShifts.includes('full');
+                    const hasLeave = doneShifts.includes('leave');
+                    const allDone = hasFull || (hasMorning && hasEvening);
+                    return (
+                        <div className="wh-today-banner" onClick={() => { setForm(f => ({ ...f, date: todayStr })); setDialogOpen(true); }}
+                            style={{ '--wc': activePalette.color, '--wbg': activePalette.bg, '--wborder': activePalette.border }}>
+                            <div className="wh-today-left">
+                                <div className="wh-today-date"><Calendar size={13} /> {todayDisplay}</div>
+                                {todayLogs.length > 0 ? (
+                                    <div className="wh-today-shifts">
+                                        {hasMorning && <span className="wh-shift-pill wh-shift-morning">Morning</span>}
+                                        {hasEvening && <span className="wh-shift-pill wh-shift-evening">Evening</span>}
+                                        {hasFull && <span className="wh-shift-pill wh-shift-full">Full Day</span>}
+                                        {hasLeave && <span className="wh-shift-pill wh-shift-leave">Leave</span>}
+                                    </div>
+                                ) : null}
+                            </div>
+                            <div className="wh-today-right">
+                                {todayLogs.length === 0
+                                    ? <span className="wh-today-status wh-today-pending">No entry yet</span>
+                                    : allDone
+                                        ? <span className="wh-today-status wh-today-done">All shifts done</span>
+                                        : <span className="wh-today-status wh-today-partial">{todayLogs.length} logged</span>
+                                }
+                            </div>
+                        </div>
+                    );
+                })()}
+
+                {/* Log Entry Dialog */}
+                {dialogOpen && (
+                    <div className="wh-dialog-overlay" onClick={() => setDialogOpen(false)}>
+                        <div className="wh-dialog" onClick={e => e.stopPropagation()}
+                            style={{ '--wc': activePalette.color, '--wbg': activePalette.bg, '--wborder': activePalette.border }}>
+                            <div className="wh-dialog-header">
+                                <div className="wh-form-title">
+                                    <Clock size={18} style={{ color: activePalette.color }} />
+                                    {isOwner ? `Log for ${activeUserName}` : 'Log Entry'}
                                 </div>
-                            ) : null}
-                        </div>
-                        <div className="wh-today-right">
-                            {todayLogs.length === 0
-                                ? <span className="wh-today-status wh-today-pending">No entry yet</span>
-                                : allDone
-                                    ? <span className="wh-today-status wh-today-done">All shifts done</span>
-                                    : <span className="wh-today-status wh-today-partial">{todayLogs.length} logged</span>
-                            }
-                        </div>
-                    </div>
-                );
-            })()}
-
-            {/* Log Entry Dialog */}
-            {dialogOpen && (
-                <div className="wh-dialog-overlay" onClick={() => setDialogOpen(false)}>
-                    <div className="wh-dialog" onClick={e => e.stopPropagation()}
-                        style={{ '--wc': activePalette.color, '--wbg': activePalette.bg, '--wborder': activePalette.border }}>
-                        <div className="wh-dialog-header">
-                            <div className="wh-form-title">
-                                <Clock size={18} style={{ color: activePalette.color }} />
-                                {isOwner ? `Log for ${activeUserName}` : 'Log Entry'}
+                                <button type="button" className="wh-dialog-close" onClick={() => setDialogOpen(false)}>✕</button>
                             </div>
-                            <button type="button" className="wh-dialog-close" onClick={() => setDialogOpen(false)}>✕</button>
+                            <form onSubmit={handleSubmit} className="wh-form-body">
+                                <div className="wh-field">
+                                    <label><Calendar size={13} /> Date</label>
+                                    <input type="date" value={form.date}
+                                        onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
+                                        max={todayStr} required className="wh-input" />
+                                </div>
+
+                                <div className="wh-field">
+                                    <label>Shift Type</label>
+                                    <div className="wh-shift-row">
+                                        {Object.entries(SHIFT_META).map(([val, meta]) => {
+                                            const active = form.shift === val;
+                                            return (
+                                                <button key={val} type="button"
+                                                    className={`wh-shift-btn ${active ? 'active' : ''}`}
+                                                    style={active ? { borderColor: meta.border, color: meta.color, background: meta.bg } : {}}
+                                                    onClick={() => handleShiftChange(val)}
+                                                >
+                                                    <meta.Icon size={14} /> {meta.label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {!isLeave && (
+                                    <div className="wh-time-row">
+                                        <div className="wh-field">
+                                            <label>Entry Time</label>
+                                            <input type="time" value={form.entryTime}
+                                                onChange={e => setForm(f => ({ ...f, entryTime: e.target.value }))}
+                                                required className="wh-input" />
+                                        </div>
+                                        <div className="wh-field">
+                                            <label>Exit Time</label>
+                                            <input type="time" value={form.exitTime}
+                                                onChange={e => setForm(f => ({ ...f, exitTime: e.target.value }))}
+                                                required className="wh-input" />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {!isLeave && duration && (
+                                    <div className="wh-duration-preview">
+                                        <Clock size={13} /> {duration} logged
+                                    </div>
+                                )}
+
+                                {isLeave && (
+                                    <div className="wh-field">
+                                        <label><CalendarX size={13} /> Leave Type</label>
+                                        <div className="wh-leave-row">
+                                            {LEAVE_TYPES.map(lt => (
+                                                <button key={lt} type="button"
+                                                    className={`wh-leave-btn ${form.leaveType === lt ? 'active' : ''}`}
+                                                    onClick={() => setForm(f => ({ ...f, leaveType: lt }))}
+                                                >{lt}</button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="wh-field">
+                                    <label>Notes <span style={{ fontWeight: 400, opacity: 0.6 }}>(optional)</span></label>
+                                    <input type="text" value={form.notes} placeholder="What did you work on?"
+                                        onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+                                        className="wh-input" />
+                                </div>
+
+                                <button type="submit" className={`wh-submit ${saved ? 'saved' : ''}`}
+                                    style={!saved ? {
+                                        background: `linear-gradient(135deg, ${activePalette.color}, ${activePalette.color}cc)`,
+                                        boxShadow: `0 4px 14px ${activePalette.shadow}`
+                                    } : {}}>
+                                    {saved ? '✓ Logged!' : <><Clock size={16} /> Log Entry</>}
+                                </button>
+                            </form>
                         </div>
-                        <form onSubmit={handleSubmit} className="wh-form-body">
-                    <div className="wh-field">
-                        <label><Calendar size={13} /> Date</label>
-                        <input type="date" value={form.date}
-                            onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
-                            max={todayStr} required className="wh-input" />
                     </div>
+                )}
 
-                    <div className="wh-field">
-                        <label>Shift Type</label>
-                        <div className="wh-shift-row">
-                            {Object.entries(SHIFT_META).map(([val, meta]) => {
-                                const active = form.shift === val;
-                                return (
-                                    <button key={val} type="button"
-                                        className={`wh-shift-btn ${active ? 'active' : ''}`}
-                                        style={active ? { borderColor: meta.border, color: meta.color, background: meta.bg } : {}}
-                                        onClick={() => handleShiftChange(val)}
-                                    >
-                                        <meta.Icon size={14} /> {meta.label}
-                                    </button>
-                                );
-                            })}
+                {/* History — full width */}
+                <div className="wh-history" style={{ '--wc': activePalette.color, '--wbg': activePalette.bg, '--wborder': activePalette.border }}>
+                    <div className="wh-history-header">
+                        <div className="wh-history-title" style={{ color: activePalette.color }}>
+                            {isOwner ? `${activeUserName}'s Logs` : 'My Logs'}
+                            {filteredHours.length > 0 && <span className="wh-history-count">{filteredHours.length}</span>}
                         </div>
+                        <button type="button" className="wh-log-btn"
+                            style={{ background: activePalette.color }}
+                            onClick={() => setDialogOpen(true)}>
+                            + Log Entry
+                        </button>
                     </div>
-
-                    {!isLeave && (
-                        <div className="wh-time-row">
-                            <div className="wh-field">
-                                <label>Entry Time</label>
-                                <input type="time" value={form.entryTime}
-                                    onChange={e => setForm(f => ({ ...f, entryTime: e.target.value }))}
-                                    required className="wh-input" />
-                            </div>
-                            <div className="wh-field">
-                                <label>Exit Time</label>
-                                <input type="time" value={form.exitTime}
-                                    onChange={e => setForm(f => ({ ...f, exitTime: e.target.value }))}
-                                    required className="wh-input" />
-                            </div>
-                        </div>
-                    )}
-
-                    {!isLeave && duration && (
-                        <div className="wh-duration-preview">
-                            <Clock size={13} /> {duration} logged
-                        </div>
-                    )}
-
-                    {isLeave && (
-                        <div className="wh-field">
-                            <label><CalendarX size={13} /> Leave Type</label>
-                            <div className="wh-leave-row">
-                                {LEAVE_TYPES.map(lt => (
-                                    <button key={lt} type="button"
-                                        className={`wh-leave-btn ${form.leaveType === lt ? 'active' : ''}`}
-                                        onClick={() => setForm(f => ({ ...f, leaveType: lt }))}
-                                    >{lt}</button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="wh-field">
-                        <label>Notes <span style={{ fontWeight: 400, opacity: 0.6 }}>(optional)</span></label>
-                        <input type="text" value={form.notes} placeholder="What did you work on?"
-                            onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                            className="wh-input" />
-                    </div>
-
-                    <button type="submit" className={`wh-submit ${saved ? 'saved' : ''}`}
-                        style={!saved ? {
-                            background: `linear-gradient(135deg, ${activePalette.color}, ${activePalette.color}cc)`,
-                            boxShadow: `0 4px 14px ${activePalette.shadow}`
-                        } : {}}>
-                        {saved ? '✓ Logged!' : <><Clock size={16} /> Log Entry</>}
-                    </button>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {/* History — full width */}
-            <div className="wh-history" style={{ '--wc': activePalette.color, '--wbg': activePalette.bg, '--wborder': activePalette.border }}>
-                <div className="wh-history-header">
-                    <div className="wh-history-title" style={{ color: activePalette.color }}>
-                        {isOwner ? `${activeUserName}'s Logs` : 'My Logs'}
-                        {filteredHours.length > 0 && <span className="wh-history-count">{filteredHours.length}</span>}
-                    </div>
-                    <button type="button" className="wh-log-btn"
-                        style={{ background: activePalette.color }}
-                        onClick={() => setDialogOpen(true)}>
-                        + Log Entry
-                    </button>
-                </div>
                     {Object.keys(grouped).length === 0 ? (
                         <div className="wh-empty">No entries for this period.</div>
                     ) : (

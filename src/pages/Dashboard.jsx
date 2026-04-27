@@ -7,7 +7,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { storage } from '../utils/storage';
 import {
     PieChart, Pie, Cell, ResponsiveContainer,
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend
@@ -40,17 +39,17 @@ const StatCard = ({ title, value, subtext, icon, trend, trendValue, color, onCli
 );
 
 /* ── Worker Dashboard ─────────────────────────────────────────── */
-const WorkerDashboard = ({ user, navigate, bills }) => {
+const WorkerDashboard = ({ user, navigate, bills, workHours, salary, complaints, users }) => {
     const perms = user?.permissions || {};
     const todayStr = new Date().toISOString().split('T')[0];
 
     // Today's work hours (just for stat card)
     const todayHours = useMemo(() => {
         if (!perms.logOwnHours) return 0;
-        return storage.getWorkHours()
-            .filter(h => h.workerId === user.userId && h.date === todayStr)
+        return (workHours || [])
+            .filter(h => (h.workerId === user.userId || h.userId === user.userId) && h.date === todayStr)
             .reduce((s, h) => s + (parseFloat(h.hours) || 0), 0);
-    }, [perms.logOwnHours, user.userId, todayStr]);
+    }, [perms.logOwnHours, workHours, user.userId, todayStr]);
 
     // Payments collected by this worker, sorted newest first
     const myPayments = useMemo(() => {
@@ -68,7 +67,6 @@ const WorkerDashboard = ({ user, navigate, bills }) => {
     // Salary data
     const mySalary = useMemo(() => {
         if (!perms.viewOwnSalary) return null;
-        const users = storage.getUsers();
         const myUser = users.find(u => u.id === user.userId);
         if (!myUser) return null;
 
@@ -79,7 +77,7 @@ const WorkerDashboard = ({ user, navigate, bills }) => {
             : new Date(today.getFullYear(), today.getMonth() - 1, startDay);
         const cycleStartStr = curCycleStart.toLocaleDateString('en-CA');
 
-        const recs = storage.getSalary()
+        const recs = (salary || [])
             .filter(s => s.workerId === user.userId && !s.deleted)
             .map(r => {
                 if (r.cashAmount !== undefined || r.type === 'advance') return r;
@@ -99,13 +97,13 @@ const WorkerDashboard = ({ user, navigate, bills }) => {
         const outstandingAdv = totalAdv - totalAdvDed;
 
         return { monthlySalary, paidThisCycle, balanceDue, outstandingAdv, curCycleStart };
-    }, [perms.viewOwnSalary, user.userId]);
+    }, [perms.viewOwnSalary, user.userId, users, salary]);
 
     // Complaints
     const myComplaints = useMemo(() => {
         if (!perms.viewComplaints) return [];
-        return storage.getComplaints().filter(c => c.status !== 'Completed');
-    }, [perms.viewComplaints]);
+        return (complaints || []).filter(c => c.status !== 'Completed');
+    }, [perms.viewComplaints, complaints]);
 
     const fmt = (n) => `₹${(n || 0).toLocaleString('en-IN')}`;
     const todayCollected = myPayments.filter(p => p.date === todayStr).reduce((s, p) => s + (p.amount || 0), 0);
@@ -715,14 +713,15 @@ const DashboardStyles = () => (
 
 /* ── Dashboard (router) ──────────────────────────────────────── */
 const Dashboard = () => {
-    const { customers, bills, complaints } = useData();
+    const data = useData();
+    const { customers, bills, complaints } = data;
     const { user } = useAuth();
     const navigate = useNavigate();
 
     const isOwner = user?.role?.toLowerCase() === 'owner';
 
     if (!isOwner) {
-        return <WorkerDashboard user={user} navigate={navigate} bills={bills} />;
+        return <WorkerDashboard user={user} navigate={navigate} bills={bills} workHours={data.workHours} salary={data.salary} complaints={complaints} users={data.users} />;
     }
 
     return (

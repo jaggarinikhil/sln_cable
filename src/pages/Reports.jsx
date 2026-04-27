@@ -10,7 +10,6 @@ import {
     PieChart, Pie, Cell, ResponsiveContainer,
     AreaChart, Area, ReferenceLine
 } from 'recharts';
-import { storage } from '../utils/storage';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#a855f7', '#ec4899'];
 const C_TV = '#a855f7';
@@ -79,7 +78,7 @@ const EmptyState = ({ label }) => (
 
 // ── Daily Report ──────────────────────────────────────────────────────────────
 const DailyReport = () => {
-    const { bills, complaints, users, updateBill, updateComplaint } = useData();
+    const { bills, complaints, users, updateBill, updateComplaint, workHours: workHoursAll, salary: salaryAll } = useData();
     const { user: currentUser } = useAuth();
 
     const today = new Date().toLocaleDateString('en-CA');
@@ -100,8 +99,7 @@ const DailyReport = () => {
         try { return toLocalDate(c.createdAt) === date; } catch { return false; }
     });
 
-    const workHoursAll = storage.getWorkHours();
-    const dayHours = workHoursAll.filter(h => h.date === date);
+    const dayHours = (workHoursAll || []).filter(h => h.date === date);
 
     // Group hours by worker
     const hoursByWorker = {};
@@ -113,8 +111,7 @@ const DailyReport = () => {
     });
     const workerGroups = Object.values(hoursByWorker);
 
-    const salaryAll = storage.getSalary();
-    const daySalary = salaryAll.filter(s => {
+    const daySalary = (salaryAll || []).filter(s => {
         const d1 = s.paymentDate === date;
         const d2 = s.date === date;
         return d1 || d2;
@@ -173,7 +170,7 @@ const DailyReport = () => {
     const workerCollectionRows = Object.values(workerCollectionMap).sort((a, b) => b.total - a.total);
 
     // ── Enhanced stats for daily view ───────────────────────────────────────
-    const totalOutstanding = dayBills.reduce((s, b) => s + (b.balanceAmount ?? (b.totalAmount - (b.paidAmount || 0))), 0);
+    const totalOutstanding = dayBills.reduce((s, b) => s + (b.balance ?? (b.totalAmount - (b.amountPaid || 0))), 0);
     const cashCollected = dayPayments.filter(p => (p.mode || '').toLowerCase() === 'cash').reduce((s, p) => s + (p.amount || 0), 0);
     const digitalCollected = dayPayments.filter(p => (p.mode || '').toLowerCase() !== 'cash').reduce((s, p) => s + (p.amount || 0), 0);
 
@@ -629,7 +626,7 @@ const DailyReport = () => {
 
 // ── Monthly Report ────────────────────────────────────────────────────────────
 const MonthlyReport = () => {
-    const { bills, complaints, updateBill, users } = useData();
+    const { bills, complaints, updateBill, users, workHours: workHoursAll, salary: salaryAll } = useData();
     const { user: currentUser } = useAuth();
 
     const now = new Date();
@@ -661,8 +658,7 @@ const MonthlyReport = () => {
     const monthComplaints = complaints.filter(c => {
         try { return inSelectedMonth(c.createdAt); } catch { return false; }
     });
-    const workHoursAll = storage.getWorkHours();
-    const monthHours = workHoursAll.filter(h => {
+    const monthHours = (workHoursAll || []).filter(h => {
         if (!h.date) return false;
         const [y, m] = h.date.split('-').map(Number);
         return m - 1 === selectedMonth && y === selectedYear;

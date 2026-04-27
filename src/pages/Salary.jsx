@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { storage } from '../utils/storage';
+import { useData } from '../context/DataContext';
 import { Banknote, ChevronDown, ChevronUp, CreditCard, Wallet, TrendingDown, AlertCircle, CheckCircle, Users } from 'lucide-react';
 
 // Palette per worker (same as WorkHours)
@@ -9,7 +9,7 @@ const WORKER_PALETTES = [
     { color: '#10b981', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.35)', shadow: 'rgba(16,185,129,0.25)' },
     { color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.35)', shadow: 'rgba(245,158,11,0.25)' },
     { color: '#ec4899', bg: 'rgba(236,72,153,0.12)', border: 'rgba(236,72,153,0.35)', shadow: 'rgba(236,72,153,0.25)' },
-    { color: '#06b6d4', bg: 'rgba(6,182,212,0.12)',  border: 'rgba(6,182,212,0.35)',  shadow: 'rgba(6,182,212,0.25)'  },
+    { color: '#06b6d4', bg: 'rgba(6,182,212,0.12)', border: 'rgba(6,182,212,0.35)', shadow: 'rgba(6,182,212,0.25)' },
     { color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)', border: 'rgba(139,92,246,0.35)', shadow: 'rgba(139,92,246,0.25)' },
 ];
 
@@ -27,17 +27,17 @@ const migrateRecord = (r) => {
 };
 
 // ── Inline Payment Form ────────────────────────────────────────
-const InlinePaymentForm = ({ worker, palette, onSave }) => {
+const InlinePaymentForm = ({ worker, palette, onSave, initialData, onCancel }) => {
     const pal = palette || WORKER_PALETTES[0];
-    const [type, setType] = useState('salary');
+    const [type, setType] = useState(initialData?.type || 'salary');
     const [form, setForm] = useState({
-        month: thisMonth,
-        paymentDate: todayStr,
-        cashAmount: '',
-        digitalAmount: '',
-        advanceDeduction: '',
-        advanceAmount: '',
-        notes: '',
+        month: initialData?.month || thisMonth,
+        paymentDate: initialData?.paymentDate || todayStr,
+        cashAmount: initialData?.cashAmount || '',
+        digitalAmount: initialData?.digitalAmount || '',
+        advanceDeduction: initialData?.advanceDeduction || '',
+        advanceAmount: initialData?.advanceAmount || '',
+        notes: initialData?.notes || '',
     });
 
     const totalPaid = (parseFloat(form.cashAmount) || 0) + (parseFloat(form.digitalAmount) || 0);
@@ -61,7 +61,7 @@ const InlinePaymentForm = ({ worker, palette, onSave }) => {
         if (type === 'advance' && !parseFloat(form.advanceAmount)) return;
 
         const record = {
-            id: Date.now().toString(),
+            ...(initialData || {}),
             type,
             workerId: worker.id,
             workerName: worker.name || '',
@@ -78,10 +78,14 @@ const InlinePaymentForm = ({ worker, palette, onSave }) => {
                 advanceDeduction: 0,
             }),
             notes: form.notes.trim(),
-            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
         };
+        if (!initialData) {
+            record.id = Date.now().toString();
+            record.createdAt = new Date().toISOString();
+        }
         onSave(record);
-        resetForm();
+        if (!initialData) resetForm();
     };
 
     const isDisabled = !worker || (type === 'salary' ? (!totalPaid && !advDed) : !parseFloat(form.advanceAmount));
@@ -184,17 +188,23 @@ const InlinePaymentForm = ({ worker, palette, onSave }) => {
                     value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
             </div>
 
-            <button className="sl-save-btn"
-                style={{
-                    background: type === 'salary'
-                        ? `linear-gradient(135deg, ${pal.color}, ${pal.color}cc)`
-                        : 'linear-gradient(135deg, #f59e0b, #d97706)',
-                    boxShadow: type === 'salary' ? `0 4px 14px ${pal.shadow}` : '0 4px 14px rgba(245,158,11,0.25)',
-                }}
-                onClick={handleSave}
-                disabled={isDisabled}>
-                <CheckCircle size={16} /> {type === 'salary' ? 'Record Payment' : 'Record Advance'}
-            </button>
+            <div className="sl-form-actions">
+                {onCancel && (
+                    <button className="sl-cancel-btn" onClick={onCancel}>Cancel</button>
+                )}
+                <button className="sl-save-btn"
+                    style={{
+                        flex: 1,
+                        background: type === 'salary'
+                            ? `linear-gradient(135deg, ${pal.color}, ${pal.color}cc)`
+                            : 'linear-gradient(135deg, #f59e0b, #d97706)',
+                        boxShadow: type === 'salary' ? `0 4px 14px ${pal.shadow}` : '0 4px 14px rgba(245,158,11,0.25)',
+                    }}
+                    onClick={handleSave}
+                    disabled={isDisabled}>
+                    <CheckCircle size={16} /> {initialData ? 'Update Record' : (type === 'salary' ? 'Record Payment' : 'Record Advance')}
+                </button>
+            </div>
         </div>
     );
 };
@@ -373,9 +383,15 @@ const FinancialSummaryCard = ({ workerData, allWorkerRecords, palette, onRecordP
 };
 
 // ── Payment History ────────────────────────────────────────────
-const PaymentHistory = ({ cycleGroups, activePalette, curCycleStartStr, monthlySalary, yearFilter, availableYears, onYearChange }) => {
+const PaymentHistory = ({ cycleGroups, activePalette, curCycleStartStr, monthlySalary, yearFilter, availableYears, onYearChange, isOwner, workerData, onUpdate }) => {
     const [expandedMonth, setExpandedMonth] = useState(null);
+    const [editingId, setEditingId] = useState(null);
     const pal = activePalette || WORKER_PALETTES[0];
+
+    const handleUpdate = async (record) => {
+        await onUpdate(record.id, record);
+        setEditingId(null);
+    };
 
     return (
         <div className="sl-history-section">
@@ -413,7 +429,10 @@ const PaymentHistory = ({ cycleGroups, activePalette, curCycleStartStr, monthlyS
 
                         const csDate = new Date(cycleKey + 'T00:00:00');
                         const ceDate = new Date(csDate.getFullYear(), csDate.getMonth() + 1, csDate.getDate() - 1);
-                        const fmtD = (d) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                        const fmtD = (d) => {
+                            if (!d || isNaN(d.getTime())) return '—';
+                            return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                        };
                         const monthLabel = `${fmtD(csDate)} – ${fmtD(ceDate)}`;
                         const isCurrentCycle = cycleKey === curCycleStartStr;
 
@@ -466,8 +485,22 @@ const PaymentHistory = ({ cycleGroups, activePalette, curCycleStartStr, monthlyS
                                     <div className="sl-month-entries">
                                         {records.map(r => {
                                             const isAdv = r.type === 'advance';
-                                            const paidDate = new Date(r.paymentDate || r.date || r.createdAt)
-                                                .toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+                                            const dObj = new Date(r.paymentDate || r.date || r.createdAt);
+                                            const paidDate = isNaN(dObj.getTime()) ? '—' : dObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+                                            if (editingId === r.id) {
+                                                return (
+                                                    <div key={r.id} className="sl-entry-edit-wrap">
+                                                        <InlinePaymentForm
+                                                            worker={workerData}
+                                                            palette={pal}
+                                                            initialData={r}
+                                                            onSave={handleUpdate}
+                                                            onCancel={() => setEditingId(null)}
+                                                        />
+                                                    </div>
+                                                );
+                                            }
+
                                             return (
                                                 <div key={r.id} className={`sl-entry ${isAdv ? 'sl-entry-advance' : ''}`}>
                                                     <div className="sl-entry-icon"
@@ -478,9 +511,14 @@ const PaymentHistory = ({ cycleGroups, activePalette, curCycleStartStr, monthlyS
                                                     </div>
                                                     <div className="sl-entry-info">
                                                         <div className="sl-entry-top">
-                                                            <span className="sl-entry-type">
-                                                                {isAdv ? 'Advance Given' : 'Salary Payment'}
-                                                            </span>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                                <span className="sl-entry-type">
+                                                                    {isAdv ? 'Advance Given' : 'Salary Payment'}
+                                                                </span>
+                                                                {isOwner && (
+                                                                    <button className="sl-entry-edit-btn" onClick={() => setEditingId(r.id)}>Edit</button>
+                                                                )}
+                                                            </div>
                                                             <span className="sl-entry-date">{paidDate}</span>
                                                         </div>
                                                         {!isAdv && (
@@ -525,10 +563,10 @@ const Salary = () => {
     const { user } = useAuth();
     const isOwner = user?.role?.toLowerCase() === 'owner';
 
-    const [rawSalaries, setRawSalaries] = useState(() => storage.getSalary());
+    const { users, salary: rawSalaries, addSalary, updateSalary } = useData();
     const salaries = rawSalaries.map(migrateRecord).filter(s => !s.deleted);
 
-    const allUsers = useMemo(() => storage.getUsers().filter(u => u.active), []);
+    const allUsers = useMemo(() => users.filter(u => u.active), [users]);
 
     // Read permissions from storage so it reflects any updates made after login
     const myStoredUser = useMemo(() => allUsers.find(u => u.id === user?.userId), [allUsers, user?.userId]);
@@ -543,7 +581,7 @@ const Salary = () => {
 
     // Owner: null = no selection, worker: always their own id
     const [selectedWorkerId, setSelectedWorkerId] = useState(() =>
-        isOwner ? '' : user.userId
+        isOwner ? '' : user?.userId || ''
     );
     const [yearFilter, setYearFilter] = useState(thisYear);
     const [payDialogOpen, setPayDialogOpen] = useState(false);
@@ -554,10 +592,15 @@ const Salary = () => {
 
     const getCycleKey = (dateStr) => {
         if (!dateStr) return null;
-        const d = new Date(dateStr.length === 10 ? dateStr + 'T00:00:00' : dateStr);
-        const day = d.getDate(), y = d.getFullYear(), m = d.getMonth();
-        const cs = day >= salaryStartDay ? new Date(y, m, salaryStartDay) : new Date(y, m - 1, salaryStartDay);
-        return cs.toLocaleDateString('en-CA');
+        try {
+            const d = new Date(dateStr.length === 10 ? dateStr + 'T00:00:00' : dateStr);
+            if (isNaN(d.getTime())) return null;
+            const day = d.getDate(), y = d.getFullYear(), m = d.getMonth();
+            const cs = day >= salaryStartDay ? new Date(y, m, salaryStartDay) : new Date(y, m - 1, salaryStartDay);
+            return `${cs.getFullYear()}-${String(cs.getMonth() + 1).padStart(2, '0')}-${String(cs.getDate()).padStart(2, '0')}`;
+        } catch (e) {
+            return null;
+        }
     };
 
     const workerRecords = salaries.filter(s =>
@@ -590,13 +633,11 @@ const Salary = () => {
             groups[key].push(r);
         });
         return Object.entries(groups).sort(([a], [b]) => b.localeCompare(a));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [workerRecords, salaryStartDay]);
 
-    const handleSave = (record) => {
-        const updated = [...rawSalaries, record];
-        storage.setSalary(updated);
-        setRawSalaries(updated);
+    const handleSave = async (record) => {
+        await addSalary(record);
         setPayDialogOpen(false);
     };
 
@@ -765,6 +806,9 @@ const Salary = () => {
                         yearFilter={yearFilter}
                         availableYears={availableYears}
                         onYearChange={setYearFilter}
+                        isOwner={isOwner}
+                        workerData={selectedWorkerData}
+                        onUpdate={updateSalary}
                     />
                 </>
             )}
@@ -960,6 +1004,13 @@ const Salary = () => {
                         grid-template-columns: 1fr !important;
                     }
                 }
+
+                .sl-form-actions { display: flex; gap: 10px; align-items: center; }
+                .sl-cancel-btn { background: rgba(255,255,255,0.06); border: 1px solid var(--border); border-radius: 12px; color: var(--text-secondary); padding: 12px 18px; font-size: 0.85rem; font-weight: 700; cursor: pointer; font-family: inherit; transition: all 0.2s; }
+                .sl-cancel-btn:hover { color: var(--text-primary); border-color: var(--border-bright); }
+                .sl-entry-edit-wrap { padding: 8px; background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.05); }
+                .sl-entry-edit-btn { background: none; border: none; color: var(--accent); font-size: 0.68rem; font-weight: 700; cursor: pointer; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(99,102,241,0.3); transition: all 0.2s; }
+                .sl-entry-edit-btn:hover { background: rgba(99,102,241,0.1); border-color: var(--accent); }
             `}</style>
         </div>
     );
