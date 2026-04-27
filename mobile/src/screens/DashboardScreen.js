@@ -175,6 +175,13 @@ const OwnerDashboard = ({ customers, bills, complaints, navigation }) => {
       <Text style={styles.header}>Dashboard</Text>
       <Text style={styles.subHeader}>{currentYearMonth}</Text>
 
+      {/* DEBUG - REMOVE LATER */}
+      {__DEV__ && (
+        <View style={{ padding: 10, background: '#1e1e1e', borderRadius: 8, marginBottom: 10 }}>
+          <Text style={{ color: '#fff', fontSize: 10 }}>Debug: Customers: {customers.length}, Bills: {bills.length}</Text>
+        </View>
+      )}
+
       {/* Stats Grid */}
       <View style={styles.statsGrid}>
         <View style={styles.statHalf}>
@@ -491,6 +498,12 @@ const WorkerDashboard = ({ user, bills, complaints, workHours, salary, users, na
       {/* Welcome header */}
       <Text style={styles.header}>Welcome, {firstName}</Text>
       <Text style={styles.subHeader}>{todayStr}</Text>
+
+      {__DEV__ && (
+        <View style={{ padding: 10, background: '#1e1e1e', borderRadius: 8, marginBottom: 10 }}>
+          <Text style={{ color: '#fff', fontSize: 10 }}>Debug (Worker): Customers: {customers ? 'OK' : 'FAIL'}, Bills: {bills.length}</Text>
+        </View>
+      )}
 
       {/* Stats */}
       <View style={styles.statsGrid}>

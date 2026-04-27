@@ -27,45 +27,8 @@ export const DataProvider = ({ children }) => {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // One-time migration helper
-    const migrateIfEmpty = async (colName, localData) => {
-        if (!localData || localData.length === 0) return;
-
-        console.log(`Checking migration for ${colName}...`);
-        for (const item of localData) {
-            const id = colName === 'users' ? (item.username || item.id) : (item.id || Date.now().toString());
-            if (!id) continue;
-
-            const docRef = doc(db, colName, id);
-            const docSnap = await getDoc(docRef);
-
-            if (!docSnap.exists()) {
-                console.log(`Migrating missing item ${id} to ${colName}...`);
-                await setDoc(docRef, {
-                    ...item,
-                    migratedAt: new Date().toISOString()
-                });
-            }
-        }
-    };
 
     useEffect(() => {
-        // Initial migration check
-        const runMigration = async () => {
-            try {
-                await migrateIfEmpty('users', storage.getUsers());
-                await migrateIfEmpty('customers', storage.getCustomers());
-                await migrateIfEmpty('bills', storage.getBills());
-                await migrateIfEmpty('complaints', storage.getComplaints());
-                await migrateIfEmpty('handovers', storage.getHandovers());
-                await migrateIfEmpty('workHours', storage.getWorkHours());
-                await migrateIfEmpty('salary', storage.getSalary());
-            } catch (err) {
-                console.error("Migration error:", err);
-            }
-        };
-        runMigration();
-
         // Subscriptions
         const subs = [
             onSnapshot(collection(db, 'customers'), (snap) => {

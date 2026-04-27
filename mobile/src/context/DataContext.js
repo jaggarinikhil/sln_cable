@@ -7,8 +7,9 @@ import {
   updateDoc,
   doc,
   query,
-  orderBy
+  orderBy,
 } from 'firebase/firestore';
+// import { getApp } from 'firebase/app';
 
 const DataContext = createContext(null);
 
@@ -24,31 +25,49 @@ export const DataProvider = ({ children }) => {
 
   useEffect(() => {
     // Subs
+    const onErr = (err) => {
+      console.error("Firestore Sub Error:", err);
+      checkInitial(); // Still count as 'resolved' to prevent hanging
+    };
+
+    let initialLoads = 0;
+    const totalSubs = 7;
+    const checkInitial = () => {
+      initialLoads++;
+      if (initialLoads >= totalSubs) setLoading(false);
+    };
+
     const subs = [
       onSnapshot(collection(db, 'customers'), (snap) => {
         setCustomers(snap.docs.map(d => ({ ...d.data(), id: d.id })));
-      }),
+        checkInitial();
+      }, onErr),
       onSnapshot(query(collection(db, 'bills'), orderBy('createdAt', 'desc')), (snap) => {
         setBills(snap.docs.map(d => ({ ...d.data(), id: d.id })));
-      }),
+        checkInitial();
+      }, onErr),
       onSnapshot(query(collection(db, 'complaints'), orderBy('createdAt', 'desc')), (snap) => {
         setComplaints(snap.docs.map(d => ({ ...d.data(), id: d.id })));
-      }),
+        checkInitial();
+      }, onErr),
       onSnapshot(collection(db, 'handovers'), (snap) => {
         setHandovers(snap.docs.map(d => ({ ...d.data(), id: d.id })));
-      }),
+        checkInitial();
+      }, onErr),
       onSnapshot(collection(db, 'workHours'), (snap) => {
         setWorkHours(snap.docs.map(d => ({ ...d.data(), id: d.id })));
-      }),
+        checkInitial();
+      }, onErr),
       onSnapshot(collection(db, 'salary'), (snap) => {
         setSalary(snap.docs.map(d => ({ ...d.data(), id: d.id })));
-      }),
+        checkInitial();
+      }, onErr),
       onSnapshot(collection(db, 'users'), (snap) => {
         setUsers(snap.docs.map(d => ({ ...d.data(), id: d.id })));
-      })
+        checkInitial();
+      }, onErr)
     ];
 
-    setLoading(false);
     return () => subs.forEach(unsub => unsub());
   }, []);
 
