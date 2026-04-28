@@ -3,11 +3,11 @@ import {
   View,
   Text,
   ScrollView,
-  FlatList,
   TouchableOpacity,
   StyleSheet,
   Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { PieChart, BarChart } from 'react-native-chart-kit';
 import { useNavigation } from '@react-navigation/native';
@@ -22,29 +22,80 @@ const screenWidth = Dimensions.get('window').width;
 const fmt = (n) => {
   if (n >= 100000) return `${(n / 100000).toFixed(1)}L`;
   if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
-  return n.toLocaleString('en-IN');
+  return Math.round(n).toLocaleString('en-IN');
 };
-
-const fmtCurrency = (n) => `\u20B9${fmt(n)}`;
-
+const fmtCurrency = (n) => `₹${fmt(n)}`;
 const formatDate = (iso) => {
   if (!iso) return '—';
   const d = new Date(iso);
   return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
 };
 
+const rgba = (c, a) => {
+  const hex = c.replace('#', '');
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  return `rgba(${r},${g},${b},${a})`;
+};
+
+const initialsOf = (name) => {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/);
+  return ((parts[0]?.[0] || '') + (parts[1]?.[0] || '')).toUpperCase() || '?';
+};
+
+// ─── Reusable bits ──────────────────────────────────────────────────────────
+
+const Hero = ({ title, subtitle, accent = colors.accent }) => (
+  <View style={[styles.hero, { borderColor: rgba(accent, 0.35), backgroundColor: rgba(accent, 0.08) }]}>
+    <View style={[styles.heroBadge, { backgroundColor: rgba(accent, 0.2) }]}>
+      <Ionicons name="tv-outline" size={18} color={accent} />
+    </View>
+    <View style={{ flex: 1 }}>
+      <Text style={styles.heroBrand}>SLN CABLE & NETWORKS</Text>
+      <Text style={styles.heroTitle}>{title}</Text>
+      <Text style={styles.heroSubtitle}>{subtitle}</Text>
+    </View>
+  </View>
+);
+
+const SectionHeader = ({ icon, title, color = colors.accent, onViewAll }) => (
+  <View style={styles.sectionHeader}>
+    <View style={styles.sectionTitleRow}>
+      <View style={[styles.sectionIcon, { backgroundColor: rgba(color, 0.15) }]}>
+        <Ionicons name={icon} size={16} color={color} />
+      </View>
+      <Text style={styles.sectionTitle}>{title}</Text>
+    </View>
+    {onViewAll ? (
+      <TouchableOpacity onPress={onViewAll} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <Text style={styles.viewAll}>View all ›</Text>
+      </TouchableOpacity>
+    ) : null}
+  </View>
+);
+
+const Avatar = ({ name, color = colors.accent }) => (
+  <View style={[styles.avatar, { backgroundColor: rgba(color, 0.15), borderColor: rgba(color, 0.3) }]}>
+    <Text style={[styles.avatarText, { color }]}>{initialsOf(name)}</Text>
+  </View>
+);
+
+const EmptyState = ({ icon, label }) => (
+  <View style={styles.empty}>
+    <Ionicons name={icon} size={28} color={colors.textSecondary} style={{ opacity: 0.5 }} />
+    <Text style={styles.emptyText}>{label}</Text>
+  </View>
+);
+
 // ─── Owner Dashboard ────────────────────────────────────────────────────────
 
 const OwnerDashboard = ({ customers, bills, complaints, navigation }) => {
   const now = new Date();
   const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const monthLabel = now.toLocaleString('default', { month: 'long', year: 'numeric' });
 
-  const thisMonthBills = useMemo(
-    () => bills.filter((b) => b.generatedDate?.startsWith(currentYearMonth)),
-    [bills, currentYearMonth],
-  );
-
-  // TV & Internet collected THIS MONTH (from payment logs)
   const { tvCollected, internetCollected } = useMemo(() => {
     let tv = 0;
     let internet = 0;
@@ -54,7 +105,6 @@ const OwnerDashboard = ({ customers, bills, complaints, navigation }) => {
         const total = b.totalAmount || 1;
         const ratioTV = b.serviceType === 'tv' ? 1 : b.serviceType === 'both' ? ((b.tvAmount || 0) / total) : 0;
         const ratioNet = b.serviceType === 'internet' ? 1 : b.serviceType === 'both' ? ((b.internetAmount || 0) / total) : 0;
-
         const monthlyPaidAmt = monthPayments.reduce((s, p) => s + (p.amount || 0), 0);
         tv += ratioTV * monthlyPaidAmt;
         internet += ratioNet * monthlyPaidAmt;
@@ -63,33 +113,15 @@ const OwnerDashboard = ({ customers, bills, complaints, navigation }) => {
     return { tvCollected: Math.round(tv), internetCollected: Math.round(internet) };
   }, [bills, currentYearMonth]);
 
-  // Total outstanding across ALL bills
-  const totalOutstanding = useMemo(
-    () => bills.reduce((s, b) => s + (b.balance || 0), 0),
-    [bills],
-  );
-
-  // Active complaints
-  const activeComplaints = useMemo(
-    () => complaints.filter((c) => c.status !== 'Completed'),
-    [complaints],
-  );
-
-  // Pending bills (Due or Partial)
+  const totalCollected = tvCollected + internetCollected;
+  const totalOutstanding = useMemo(() => bills.reduce((s, b) => s + (b.balance || 0), 0), [bills]);
+  const activeComplaints = useMemo(() => complaints.filter((c) => c.status !== 'Completed'), [complaints]);
   const pendingBills = useMemo(
-    () =>
-      bills
-        .filter((b) => b.status === 'Due' || b.status === 'Partial')
-        .sort((a, b) => (b.balance || 0) - (a.balance || 0)),
+    () => bills.filter((b) => b.status === 'Due' || b.status === 'Partial').sort((a, b) => (b.balance || 0) - (a.balance || 0)),
     [bills],
   );
+  const pendingBillsBalance = useMemo(() => pendingBills.reduce((s, b) => s + (b.balance || 0), 0), [pendingBills]);
 
-  const pendingBillsBalance = useMemo(
-    () => pendingBills.reduce((s, b) => s + (b.balance || 0), 0),
-    [pendingBills],
-  );
-
-  // Payment mode chart data
   const paymentModeData = useMemo(() => {
     const modes = { Cash: 0, PhonePe: 0, GPay: 0 };
     bills.forEach((b) => {
@@ -107,7 +139,6 @@ const OwnerDashboard = ({ customers, bills, complaints, navigation }) => {
     ];
   }, [bills]);
 
-  // Revenue trend – last 6 months (based on collection date)
   const revenueTrend = useMemo(() => {
     const months = [];
     for (let i = 5; i >= 0; i--) {
@@ -120,7 +151,6 @@ const OwnerDashboard = ({ customers, bills, complaints, navigation }) => {
       const total = b.totalAmount || 1;
       const ratioTV = b.serviceType === 'tv' ? 1 : b.serviceType === 'both' ? ((b.tvAmount || 0) / total) : 0;
       const ratioNet = b.serviceType === 'internet' ? 1 : b.serviceType === 'both' ? ((b.internetAmount || 0) / total) : 0;
-
       (b.payments || []).forEach((p) => {
         const entry = months.find((m) => p.date?.startsWith(m.ym));
         if (entry) {
@@ -132,7 +162,6 @@ const OwnerDashboard = ({ customers, bills, complaints, navigation }) => {
     return months;
   }, [bills]);
 
-  // Recent payments – flattened from all bills
   const recentPayments = useMemo(() => {
     const all = bills.flatMap((b) =>
       (b.payments || []).map((p) => ({
@@ -143,15 +172,13 @@ const OwnerDashboard = ({ customers, bills, complaints, navigation }) => {
       })),
     );
     all.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-    return all.slice(0, 30);
+    return all.slice(0, 10);
   }, [bills]);
 
-  // Recent active complaints
-  const recentComplaints = useMemo(() => {
-    return [...activeComplaints]
-      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
-      .slice(0, 30);
-  }, [activeComplaints]);
+  const recentComplaints = useMemo(
+    () => [...activeComplaints].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0, 10),
+    [activeComplaints],
+  );
 
   const chartConfig = {
     backgroundGradientFrom: colors.bgCard,
@@ -163,43 +190,36 @@ const OwnerDashboard = ({ customers, bills, complaints, navigation }) => {
     barPercentage: 0.5,
   };
 
+  const hasPaymentData = paymentModeData.some((d) => d.amount > 0);
+  const hasRevenueData = revenueTrend.some((m) => m.tv > 0 || m.internet > 0);
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      {/* Brand Header */}
-      <View style={styles.brandHeader}>
-        <Ionicons name="tv-outline" size={24} color={colors.accent} />
-        <Text style={styles.brandHeaderText}>SLN CABLE & NETWORKS</Text>
-      </View>
+    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
+      <Hero title="Dashboard" subtitle={monthLabel} />
 
-      {/* Header */}
-      <Text style={styles.header}>Dashboard</Text>
-      <Text style={styles.subHeader}>{currentYearMonth}</Text>
-
-      {/* DEBUG - REMOVE LATER */}
-      {__DEV__ && (
-        <View style={{ padding: 10, background: '#1e1e1e', borderRadius: 8, marginBottom: 10 }}>
-          <Text style={{ color: '#fff', fontSize: 10 }}>Debug: Customers: {customers.length}, Bills: {bills.length}</Text>
+      {/* Highlight collection card */}
+      <View style={styles.highlight}>
+        <View style={styles.highlightLeft}>
+          <Text style={styles.highlightLabel}>COLLECTED THIS MONTH</Text>
+          <Text style={styles.highlightValue}>{fmtCurrency(totalCollected)}</Text>
+          <View style={styles.highlightSplit}>
+            <View style={styles.highlightChip}>
+              <View style={[styles.dot, { backgroundColor: colors.purple }]} />
+              <Text style={styles.highlightChipText}>TV {fmtCurrency(tvCollected)}</Text>
+            </View>
+            <View style={styles.highlightChip}>
+              <View style={[styles.dot, { backgroundColor: colors.cyan }]} />
+              <Text style={styles.highlightChipText}>Net {fmtCurrency(internetCollected)}</Text>
+            </View>
+          </View>
         </View>
-      )}
+        <View style={styles.highlightIcon}>
+          <Ionicons name="trending-up" size={32} color={colors.green} />
+        </View>
+      </View>
 
       {/* Stats Grid */}
       <View style={styles.statsGrid}>
-        <View style={styles.statHalf}>
-          <StatCard
-            title="TV Collected"
-            value={fmtCurrency(tvCollected)}
-            icon={<Ionicons name="tv-outline" size={20} color={colors.purple} />}
-            color={colors.purple}
-          />
-        </View>
-        <View style={styles.statHalf}>
-          <StatCard
-            title="Internet Collected"
-            value={fmtCurrency(internetCollected)}
-            icon={<Ionicons name="wifi-outline" size={20} color={colors.cyan} />}
-            color={colors.cyan}
-          />
-        </View>
         <View style={styles.statHalf}>
           <StatCard
             title="Total Outstanding"
@@ -210,7 +230,7 @@ const OwnerDashboard = ({ customers, bills, complaints, navigation }) => {
         </View>
         <View style={styles.statHalf}>
           <StatCard
-            title="Total Customers"
+            title="Customers"
             value={customers.length.toString()}
             icon={<Ionicons name="people-outline" size={20} color={colors.blue} />}
             color={colors.blue}
@@ -230,9 +250,9 @@ const OwnerDashboard = ({ customers, bills, complaints, navigation }) => {
           <StatCard
             title="Pending Bills"
             value={pendingBills.length.toString()}
-            subtext={`Balance: ${fmtCurrency(pendingBillsBalance)}`}
-            icon={<Ionicons name="receipt-outline" size={20} color={colors.red} />}
-            color={colors.red}
+            subtext={fmtCurrency(pendingBillsBalance)}
+            icon={<Ionicons name="receipt-outline" size={20} color={colors.pink} />}
+            color={colors.pink}
             onPress={() => navigation.navigate('Payments', { screen: 'PaymentsHome' })}
           />
         </View>
@@ -240,12 +260,12 @@ const OwnerDashboard = ({ customers, bills, complaints, navigation }) => {
 
       {/* Payment Mode Pie Chart */}
       <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Payment Modes</Text>
-        {paymentModeData.some((d) => d.amount > 0) ? (
+        <SectionHeader icon="pie-chart-outline" title="Payment Modes" color={colors.accent} />
+        {hasPaymentData ? (
           <PieChart
             data={paymentModeData.map((d) => ({ ...d, population: d.amount }))}
             width={screenWidth - 48}
-            height={200}
+            height={180}
             chartConfig={chartConfig}
             accessor="population"
             backgroundColor="transparent"
@@ -253,135 +273,143 @@ const OwnerDashboard = ({ customers, bills, complaints, navigation }) => {
             absolute
           />
         ) : (
-          <Text style={styles.emptyText}>No payment data available</Text>
+          <EmptyState icon="pie-chart-outline" label="No payment data yet" />
         )}
       </View>
 
-      {/* Revenue Trend Bar Chart */}
+      {/* Revenue Trend */}
       <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Revenue Trend (6 Months)</Text>
-        {revenueTrend.some((m) => m.tv > 0 || m.internet > 0) ? (
-          <BarChart
-            data={{
-              labels: revenueTrend.map((m) => m.label),
-              datasets: [
-                { data: revenueTrend.map((m) => Math.round(m.tv / 1000) || 0), color: () => colors.purple, strokeWidth: 2 },
-                { data: revenueTrend.map((m) => Math.round(m.internet / 1000) || 0), color: () => colors.cyan, strokeWidth: 2 },
-              ],
-              legend: ['TV (K)', 'Net (K)'],
-            }}
-            width={screenWidth - 48}
-            height={220}
-            chartConfig={{
-              ...chartConfig,
-              color: (opacity = 1) => `rgba(168,85,247,${opacity})`,
-            }}
-            style={{ borderRadius: 12 }}
-            fromZero
-            showValuesOnTopOfBars
-          />
+        <SectionHeader icon="bar-chart-outline" title="Revenue Trend (6M)" color={colors.purple} />
+        {hasRevenueData ? (
+          <>
+            <View style={styles.legendRow}>
+              <View style={styles.legendItem}>
+                <View style={[styles.dot, { backgroundColor: colors.purple }]} />
+                <Text style={styles.legendText}>TV</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.dot, { backgroundColor: colors.cyan }]} />
+                <Text style={styles.legendText}>Internet</Text>
+              </View>
+              <Text style={styles.legendUnit}>(₹ in thousands)</Text>
+            </View>
+            <BarChart
+              data={{
+                labels: revenueTrend.map((m) => m.label),
+                datasets: [
+                  { data: revenueTrend.map((m) => Math.round(m.tv / 1000) || 0), color: () => colors.purple, strokeWidth: 2 },
+                  { data: revenueTrend.map((m) => Math.round(m.internet / 1000) || 0), color: () => colors.cyan, strokeWidth: 2 },
+                ],
+              }}
+              width={screenWidth - 48}
+              height={200}
+              chartConfig={{ ...chartConfig, color: (opacity = 1) => `rgba(168,85,247,${opacity})` }}
+              style={{ borderRadius: 12, marginLeft: -12 }}
+              fromZero
+              withInnerLines={false}
+            />
+          </>
         ) : (
-          <Text style={styles.emptyText}>No revenue data available</Text>
+          <EmptyState icon="bar-chart-outline" label="No revenue data yet" />
         )}
       </View>
 
-      {/* Recent Payments */}
+      {/* Recent Payments — horizontal carousel */}
       <View style={styles.card}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent Payments</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Payments', { screen: 'PaymentsHome' })}>
-            <Text style={styles.viewAll}>View All</Text>
-          </TouchableOpacity>
-        </View>
+        <SectionHeader
+          icon="cash-outline"
+          title="Recent Payments"
+          color={colors.green}
+          onViewAll={() => navigation.navigate('Payments', { screen: 'PaymentsHome' })}
+        />
         {recentPayments.length === 0 ? (
-          <Text style={styles.emptyText}>No payments yet</Text>
+          <EmptyState icon="cash-outline" label="No payments yet" />
         ) : (
-          recentPayments.map((p, i) => (
-            <TouchableOpacity
-              key={`${p.date}-${i}`}
-              style={[styles.listRow, i < recentPayments.length - 1 && styles.listRowBorder]}
-              onPress={() => navigation.navigate('Payments', { screen: 'PaymentsHome' })}
-              activeOpacity={0.7}
-            >
-              <View style={styles.listRowLeft}>
-                <Text style={styles.listPrimary} numberOfLines={1}>{p.customerName}</Text>
-                <View style={styles.rowMeta}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hScrollContent}>
+            {recentPayments.map((p, i) => (
+              <TouchableOpacity
+                key={`${p.date}-${i}`}
+                style={[styles.hCard, { borderLeftColor: colors.green }]}
+                onPress={() => navigation.navigate('Payments', { screen: 'PaymentsHome' })}
+                activeOpacity={0.8}
+              >
+                <View style={styles.hCardTop}>
+                  <Avatar name={p.customerName} color={colors.green} />
+                  <Text style={[styles.hCardAmount, { color: colors.green }]}>+{fmtCurrency(p.amount || 0)}</Text>
+                </View>
+                <Text style={styles.hCardName} numberOfLines={1}>{p.customerName}</Text>
+                <View style={styles.hCardMeta}>
                   <PaymentBadge mode={p.mode} />
                   <Text style={styles.listMeta}>{formatDate(p.date)}</Text>
                 </View>
                 {p.collectedBy ? (
-                  <Text style={styles.listMeta}>by {p.collectedBy}</Text>
+                  <Text style={styles.listMeta} numberOfLines={1}>by {p.collectedBy}</Text>
                 ) : null}
-              </View>
-              <Text style={[styles.listAmount, { color: colors.green }]}>
-                {fmtCurrency(p.amount || 0)}
-              </Text>
-            </TouchableOpacity>
-          ))
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         )}
       </View>
 
-      {/* Recent Complaints */}
+      {/* Active Complaints — horizontal carousel */}
       <View style={styles.card}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Active Complaints</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('More', { screen: 'Complaints' })}>
-            <Text style={styles.viewAll}>View All</Text>
-          </TouchableOpacity>
-        </View>
+        <SectionHeader
+          icon="warning-outline"
+          title="Active Complaints"
+          color={colors.yellow}
+          onViewAll={() => navigation.navigate('More', { screen: 'Complaints' })}
+        />
         {recentComplaints.length === 0 ? (
-          <Text style={styles.emptyText}>No active complaints</Text>
+          <EmptyState icon="checkmark-circle-outline" label="All clear — no active complaints" />
         ) : (
-          recentComplaints.map((c, i) => (
-            <TouchableOpacity
-              key={c.id}
-              style={[styles.listRow, i < recentComplaints.length - 1 && styles.listRowBorder]}
-              onPress={() => navigation.navigate('More', { screen: 'Complaints' })}
-              activeOpacity={0.7}
-            >
-              <View style={styles.listRowLeft}>
-                <Text style={styles.listPrimary} numberOfLines={1}>{c.customerName || 'Unknown'}</Text>
-                <Text style={styles.listSecondary} numberOfLines={1}>
-                  {c.issue || c.description || '—'}
-                </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hScrollContent}>
+            {recentComplaints.map((c) => (
+              <TouchableOpacity
+                key={c.id}
+                style={[styles.hCard, { borderLeftColor: colors.yellow }]}
+                onPress={() => navigation.navigate('More', { screen: 'Complaints' })}
+                activeOpacity={0.8}
+              >
+                <View style={styles.hCardTop}>
+                  <Avatar name={c.customerName || '?'} color={colors.yellow} />
+                  <StatusBadge status={c.status} />
+                </View>
+                <Text style={styles.hCardName} numberOfLines={1}>{c.customerName || 'Unknown'}</Text>
+                <Text style={styles.hCardIssue} numberOfLines={2}>{c.issue || c.description || '—'}</Text>
                 <Text style={styles.listMeta}>{formatDate(c.createdAt)}</Text>
-              </View>
-              <StatusBadge status={c.status} />
-            </TouchableOpacity>
-          ))
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         )}
       </View>
 
       {/* Pending Bills */}
       <View style={styles.card}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Pending Bills</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Payments', { screen: 'PaymentsHome' })}>
-            <Text style={styles.viewAll}>View All</Text>
-          </TouchableOpacity>
-        </View>
+        <SectionHeader
+          icon="receipt-outline"
+          title="Pending Bills"
+          color={colors.pink}
+          onViewAll={() => navigation.navigate('Payments', { screen: 'PaymentsHome' })}
+        />
         {pendingBills.length === 0 ? (
-          <Text style={styles.emptyText}>No pending bills</Text>
+          <EmptyState icon="checkmark-circle-outline" label="No pending bills" />
         ) : (
-          pendingBills.slice(0, 30).map((b, i) => (
+          pendingBills.slice(0, 10).map((b, i) => (
             <TouchableOpacity
               key={b.id}
-              style={[styles.listRow, i < Math.min(pendingBills.length, 30) - 1 && styles.listRowBorder]}
+              style={[styles.listRow, i < Math.min(pendingBills.length, 10) - 1 && styles.listRowBorder]}
               onPress={() => navigation.navigate('Payments', { screen: 'PaymentsHome' })}
               activeOpacity={0.7}
             >
-              <View style={styles.listRowLeft}>
+              <Avatar name={b.customerName || '?'} color={colors.pink} />
+              <View style={styles.listRowMid}>
                 <Text style={styles.listPrimary} numberOfLines={1}>{b.customerName || 'Unknown'}</Text>
-                <Text style={styles.listSecondary}>Bill #{b.billNumber || b.id}</Text>
-                <View style={styles.billAmounts}>
-                  <Text style={styles.listMeta}>Total: {fmtCurrency(b.totalAmount || 0)}</Text>
-                  <Text style={styles.listMeta}>  Paid: {fmtCurrency(b.amountPaid || 0)}</Text>
-                </View>
+                <Text style={styles.listSecondary} numberOfLines={1}>
+                  Bill #{b.billNumber || b.id} · Paid {fmtCurrency(b.amountPaid || 0)} / {fmtCurrency(b.totalAmount || 0)}
+                </Text>
               </View>
               <View style={styles.listRowRight}>
-                <Text style={[styles.listAmount, { color: colors.red }]}>
-                  {fmtCurrency(b.balance || 0)}
-                </Text>
+                <Text style={[styles.listAmount, { color: colors.red }]}>{fmtCurrency(b.balance || 0)}</Text>
                 <StatusBadge status={b.status} />
               </View>
             </TouchableOpacity>
@@ -399,111 +427,88 @@ const OwnerDashboard = ({ customers, bills, complaints, navigation }) => {
 const WorkerDashboard = ({ user, bills, complaints, workHours, salary, users, navigation }) => {
   const now = new Date();
   const todayStr = now.toISOString().slice(0, 10);
+  const todayLabel = now.toLocaleString('default', { weekday: 'long', day: 'numeric', month: 'long' });
   const firstName = (user.name || '').split(' ')[0];
 
-  // Hours today
   const hoursToday = useMemo(() => {
-    const entries = (workHours || []).filter(
-      (w) => w.userId === user.userId && w.date?.startsWith(todayStr),
-    );
-    return entries.reduce((s, w) => {
-      const hrs = w.hours || 0;
-      return s + hrs;
-    }, 0);
+    const entries = (workHours || []).filter((w) => w.userId === user.userId && w.date?.startsWith(todayStr));
+    return entries.reduce((s, w) => s + (w.hours || 0), 0);
   }, [workHours, user.userId, todayStr]);
 
-  // Collected today
   const collectedToday = useMemo(() => {
     let total = 0;
     bills.forEach((b) => {
       (b.payments || []).forEach((p) => {
-        if (p.collectedBy === user.name && p.date?.startsWith(todayStr)) {
-          total += p.amount || 0;
-        }
+        if (p.collectedBy === user.name && p.date?.startsWith(todayStr)) total += p.amount || 0;
       });
     });
     return total;
   }, [bills, user.name, todayStr]);
 
-  // Salary cycle calculations
   const salaryInfo = useMemo(() => {
     const userRecord = (users || []).find((u) => u.id === user.userId);
     const monthlySalary = userRecord?.monthlySalary || 0;
     const salaryStartDay = userRecord?.salaryStartDay || 1;
-
-    // Calculate cycle start
     let cycleStart;
-    if (now.getDate() >= salaryStartDay) {
-      cycleStart = new Date(now.getFullYear(), now.getMonth(), salaryStartDay);
-    } else {
-      cycleStart = new Date(now.getFullYear(), now.getMonth() - 1, salaryStartDay);
-    }
+    if (now.getDate() >= salaryStartDay) cycleStart = new Date(now.getFullYear(), now.getMonth(), salaryStartDay);
+    else cycleStart = new Date(now.getFullYear(), now.getMonth() - 1, salaryStartDay);
     const cycleStartStr = cycleStart.toISOString().slice(0, 10);
-
-    // Get salary records in this cycle
-    const cycleRecords = (salary || []).filter((s) => {
-      return s.userId === user.userId && s.date >= cycleStartStr;
-    });
-
-    const totalPaid = cycleRecords
-      .filter((s) => s.type === 'payment' || s.type === 'salary')
-      .reduce((sum, s) => sum + (s.amount || 0), 0);
-
-    const totalAdvances = cycleRecords
-      .filter((s) => s.type === 'advance')
-      .reduce((sum, s) => sum + (s.amount || 0), 0);
-
-    const totalAdvanceDeductions = cycleRecords
-      .filter((s) => s.type === 'advance_deduction')
-      .reduce((sum, s) => sum + (s.amount || 0), 0);
-
+    const cycleRecords = (salary || []).filter((s) => s.userId === user.userId && s.date >= cycleStartStr);
+    const totalPaid = cycleRecords.filter((s) => s.type === 'payment' || s.type === 'salary').reduce((sum, s) => sum + (s.amount || 0), 0);
+    const totalAdvances = cycleRecords.filter((s) => s.type === 'advance').reduce((sum, s) => sum + (s.amount || 0), 0);
+    const totalAdvanceDeductions = cycleRecords.filter((s) => s.type === 'advance_deduction').reduce((sum, s) => sum + (s.amount || 0), 0);
     const outstandingAdvance = totalAdvances - totalAdvanceDeductions;
     const balance = monthlySalary - totalPaid - outstandingAdvance;
-
     return { monthlySalary, totalPaid, balance, outstandingAdvance };
   }, [users, salary, user.userId]);
 
-  // Active complaints assigned to or relevant
   const activeComplaints = useMemo(
-    () =>
-      complaints
-        .filter((c) => c.status !== 'Completed')
-        .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)),
+    () => complaints.filter((c) => c.status !== 'Completed').sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)),
     [complaints],
   );
 
-  // Payments collected by this user
   const myPayments = useMemo(() => {
     const all = bills.flatMap((b) =>
       (b.payments || [])
         .filter((p) => p.collectedBy === user.name)
-        .map((p) => ({
-          ...p,
-          customerName: b.customerName || 'Unknown',
-          billNumber: b.billNumber || b.id,
-        })),
+        .map((p) => ({ ...p, customerName: b.customerName || 'Unknown', billNumber: b.billNumber || b.id })),
     );
     all.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-    return all.slice(0, 30);
+    return all.slice(0, 10);
   }, [bills, user.name]);
 
+  const salaryProgress = salaryInfo.monthlySalary > 0 ? Math.min(1, salaryInfo.totalPaid / salaryInfo.monthlySalary) : 0;
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      {/* Brand Header */}
-      <View style={styles.brandHeader}>
-        <Ionicons name="tv-outline" size={24} color={colors.accent} />
-        <Text style={styles.brandHeaderText}>SLN CABLE & NETWORKS</Text>
-      </View>
+    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
+      <Hero title={`Hi, ${firstName} 👋`} subtitle={todayLabel} accent={colors.cyan} />
 
-      {/* Welcome header */}
-      <Text style={styles.header}>Welcome, {firstName}</Text>
-      <Text style={styles.subHeader}>{todayStr}</Text>
-
-      {__DEV__ && (
-        <View style={{ padding: 10, background: '#1e1e1e', borderRadius: 8, marginBottom: 10 }}>
-          <Text style={{ color: '#fff', fontSize: 10 }}>Debug (Worker): Customers: {customers ? 'OK' : 'FAIL'}, Bills: {bills.length}</Text>
+      {/* Salary highlight */}
+      <View style={styles.highlight}>
+        <View style={styles.highlightLeft}>
+          <Text style={styles.highlightLabel}>SALARY THIS CYCLE</Text>
+          <Text style={styles.highlightValue}>
+            {fmtCurrency(salaryInfo.totalPaid)}
+            <Text style={styles.highlightValueSmall}> / {fmtCurrency(salaryInfo.monthlySalary)}</Text>
+          </Text>
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${salaryProgress * 100}%` }]} />
+          </View>
+          <View style={styles.highlightSplit}>
+            <Text style={styles.highlightChipText}>
+              {salaryInfo.balance >= 0 ? 'Balance: ' : 'Excess: '}
+              <Text style={{ color: salaryInfo.balance >= 0 ? colors.yellow : colors.green, fontWeight: fontWeight.bold }}>
+                {fmtCurrency(Math.abs(salaryInfo.balance))}
+              </Text>
+            </Text>
+            {salaryInfo.outstandingAdvance > 0 ? (
+              <Text style={styles.highlightChipText}>
+                Advance: <Text style={{ color: colors.red, fontWeight: fontWeight.bold }}>{fmtCurrency(salaryInfo.outstandingAdvance)}</Text>
+              </Text>
+            ) : null}
+          </View>
         </View>
-      )}
+      </View>
 
       {/* Stats */}
       <View style={styles.statsGrid}>
@@ -525,29 +530,6 @@ const WorkerDashboard = ({ user, bills, complaints, workHours, salary, users, na
         </View>
         <View style={styles.statHalf}>
           <StatCard
-            title="Paid This Cycle"
-            value={fmtCurrency(salaryInfo.totalPaid)}
-            subtext={`of ${fmtCurrency(salaryInfo.monthlySalary)}`}
-            icon={<Ionicons name="wallet-outline" size={20} color={colors.accent} />}
-            color={colors.accent}
-          />
-        </View>
-        <View style={styles.statHalf}>
-          <StatCard
-            title={salaryInfo.balance >= 0 ? 'Balance Due' : 'Excess'}
-            value={fmtCurrency(Math.abs(salaryInfo.balance))}
-            icon={
-              <Ionicons
-                name={salaryInfo.balance >= 0 ? 'trending-down-outline' : 'trending-up-outline'}
-                size={20}
-                color={salaryInfo.balance >= 0 ? colors.yellow : colors.green}
-              />
-            }
-            color={salaryInfo.balance >= 0 ? colors.yellow : colors.green}
-          />
-        </View>
-        <View style={styles.statHalf}>
-          <StatCard
             title="Active Complaints"
             value={activeComplaints.length.toString()}
             icon={<Ionicons name="warning-outline" size={20} color={colors.yellow} />}
@@ -555,69 +537,80 @@ const WorkerDashboard = ({ user, bills, complaints, workHours, salary, users, na
             onPress={() => navigation.navigate('More', { screen: 'Complaints' })}
           />
         </View>
+        <View style={styles.statHalf}>
+          <StatCard
+            title="My Payments"
+            value={myPayments.length.toString()}
+            icon={<Ionicons name="receipt-outline" size={20} color={colors.purple} />}
+            color={colors.purple}
+            onPress={() => navigation.navigate('Payments', { screen: 'PaymentsHome' })}
+          />
+        </View>
       </View>
 
       {/* Active Complaints */}
       <View style={styles.card}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Active Complaints</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('More', { screen: 'Complaints' })}>
-            <Text style={styles.viewAll}>View All</Text>
-          </TouchableOpacity>
-        </View>
+        <SectionHeader
+          icon="warning-outline"
+          title="Active Complaints"
+          color={colors.yellow}
+          onViewAll={() => navigation.navigate('More', { screen: 'Complaints' })}
+        />
         {activeComplaints.length === 0 ? (
-          <Text style={styles.emptyText}>No active complaints</Text>
+          <EmptyState icon="checkmark-circle-outline" label="All clear — no active complaints" />
         ) : (
-          activeComplaints.slice(0, 30).map((c, i) => (
-            <TouchableOpacity
-              key={c.id}
-              style={[styles.listRow, i < Math.min(activeComplaints.length, 30) - 1 && styles.listRowBorder]}
-              onPress={() => navigation.navigate('More', { screen: 'Complaints' })}
-              activeOpacity={0.7}
-            >
-              <View style={styles.listRowLeft}>
-                <Text style={styles.listPrimary} numberOfLines={1}>{c.customerName || 'Unknown'}</Text>
-                <Text style={styles.listSecondary} numberOfLines={1}>
-                  {c.issue || c.description || '—'}
-                </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hScrollContent}>
+            {activeComplaints.slice(0, 10).map((c) => (
+              <TouchableOpacity
+                key={c.id}
+                style={[styles.hCard, { borderLeftColor: colors.yellow }]}
+                onPress={() => navigation.navigate('More', { screen: 'Complaints' })}
+                activeOpacity={0.8}
+              >
+                <View style={styles.hCardTop}>
+                  <Avatar name={c.customerName || '?'} color={colors.yellow} />
+                  <StatusBadge status={c.status} />
+                </View>
+                <Text style={styles.hCardName} numberOfLines={1}>{c.customerName || 'Unknown'}</Text>
+                <Text style={styles.hCardIssue} numberOfLines={2}>{c.issue || c.description || '—'}</Text>
                 <Text style={styles.listMeta}>{formatDate(c.createdAt)}</Text>
-              </View>
-              <StatusBadge status={c.status} />
-            </TouchableOpacity>
-          ))
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         )}
       </View>
 
-      {/* Payments You Collected */}
+      {/* Payments Collected — horizontal carousel */}
       <View style={styles.card}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Payments You Collected</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Payments', { screen: 'PaymentsHome' })}>
-            <Text style={styles.viewAll}>View All</Text>
-          </TouchableOpacity>
-        </View>
+        <SectionHeader
+          icon="cash-outline"
+          title="Payments You Collected"
+          color={colors.green}
+          onViewAll={() => navigation.navigate('Payments', { screen: 'PaymentsHome' })}
+        />
         {myPayments.length === 0 ? (
-          <Text style={styles.emptyText}>No payments collected yet</Text>
+          <EmptyState icon="cash-outline" label="No payments collected yet" />
         ) : (
-          myPayments.map((p, i) => (
-            <TouchableOpacity
-              key={`${p.date}-${i}`}
-              style={[styles.listRow, i < myPayments.length - 1 && styles.listRowBorder]}
-              onPress={() => navigation.navigate('Payments', { screen: 'PaymentsHome' })}
-              activeOpacity={0.7}
-            >
-              <View style={styles.listRowLeft}>
-                <Text style={styles.listPrimary} numberOfLines={1}>{p.customerName}</Text>
-                <View style={styles.rowMeta}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hScrollContent}>
+            {myPayments.map((p, i) => (
+              <TouchableOpacity
+                key={`${p.date}-${i}`}
+                style={[styles.hCard, { borderLeftColor: colors.green }]}
+                onPress={() => navigation.navigate('Payments', { screen: 'PaymentsHome' })}
+                activeOpacity={0.8}
+              >
+                <View style={styles.hCardTop}>
+                  <Avatar name={p.customerName} color={colors.green} />
+                  <Text style={[styles.hCardAmount, { color: colors.green }]}>+{fmtCurrency(p.amount || 0)}</Text>
+                </View>
+                <Text style={styles.hCardName} numberOfLines={1}>{p.customerName}</Text>
+                <View style={styles.hCardMeta}>
                   <PaymentBadge mode={p.mode} />
                   <Text style={styles.listMeta}>{formatDate(p.date)}</Text>
                 </View>
-              </View>
-              <Text style={[styles.listAmount, { color: colors.green }]}>
-                {fmtCurrency(p.amount || 0)}
-              </Text>
-            </TouchableOpacity>
-          ))
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         )}
       </View>
 
@@ -626,78 +619,150 @@ const WorkerDashboard = ({ user, bills, complaints, workHours, salary, users, na
   );
 };
 
-// ─── Main Export ─────────────────────────────────────────────────────────────
+// ─── Main Export ────────────────────────────────────────────────────────────
 
 const DashboardScreen = () => {
   const { user } = useAuth();
   const { customers, bills, complaints, workHours, salary, users } = useData();
   const navigation = useNavigation();
 
-  if (user?.role === 'owner') {
-    return (
-      <OwnerDashboard
-        customers={customers}
-        bills={bills}
-        complaints={complaints}
-        navigation={navigation}
-      />
-    );
-  }
-
   return (
-    <WorkerDashboard
-      user={user}
-      bills={bills}
-      complaints={complaints}
-      workHours={workHours}
-      salary={salary}
-      users={users}
-      navigation={navigation}
-    />
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.bgDark }} edges={['top']}>
+      {user?.role === 'owner' ? (
+        <OwnerDashboard customers={customers} bills={bills} complaints={complaints} navigation={navigation} />
+      ) : (
+        <WorkerDashboard
+          user={user}
+          bills={bills}
+          complaints={complaints}
+          workHours={workHours}
+          salary={salary}
+          users={users}
+          navigation={navigation}
+        />
+      )}
+    </SafeAreaView>
   );
 };
 
 // ─── Styles ─────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.bgDark,
-  },
-  contentContainer: {
-    padding: spacing.lg,
-    paddingTop: spacing.xxl,
-  },
-  brandHeader: {
+  container: { flex: 1, backgroundColor: colors.bgDark },
+  contentContainer: { padding: spacing.lg, paddingTop: spacing.md },
+
+  // Hero
+  hero: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: spacing.xs,
+    gap: spacing.md,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderRadius: borderRadius.xl,
+    marginBottom: spacing.lg,
   },
-  brandHeaderText: {
-    fontSize: fontSize.sm,
+  heroBadge: {
+    width: 44, height: 44,
+    borderRadius: borderRadius.md,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  heroBrand: {
+    fontSize: 10,
     fontWeight: fontWeight.bold,
     color: colors.accent,
-    letterSpacing: 1.2,
+    letterSpacing: 1.4,
+    marginBottom: 4,
   },
-  header: {
-    fontSize: fontSize.xxxl,
+  heroTitle: {
+    fontSize: fontSize.xxl,
     fontWeight: fontWeight.extrabold,
     color: colors.textPrimary,
-    marginBottom: 2,
+    lineHeight: 30,
   },
-  subHeader: {
-    fontSize: fontSize.md,
+  heroSubtitle: {
+    fontSize: fontSize.sm,
     color: colors.textSecondary,
-    marginBottom: spacing.xl,
+    marginTop: 2,
   },
 
-  // Stats grid – 2 columns
+  // Highlight banner
+  highlight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.bgCard,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+  },
+  highlightLeft: { flex: 1 },
+  highlightLabel: {
+    fontSize: 10,
+    fontWeight: fontWeight.bold,
+    color: colors.textSecondary,
+    letterSpacing: 1.2,
+    marginBottom: 6,
+  },
+  highlightValue: {
+    fontSize: 28,
+    fontWeight: fontWeight.extrabold,
+    color: colors.green,
+    marginBottom: 8,
+  },
+  highlightValueSmall: {
+    fontSize: fontSize.md,
+    color: colors.textSecondary,
+    fontWeight: fontWeight.medium,
+  },
+  highlightSplit: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: 4,
+  },
+  highlightChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    backgroundColor: colors.bgDark,
+    borderRadius: borderRadius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  highlightChipText: {
+    fontSize: fontSize.xs,
+    color: colors.textSecondary,
+  },
+  highlightIcon: {
+    width: 56, height: 56,
+    borderRadius: borderRadius.lg,
+    backgroundColor: rgba(colors.green, 0.12),
+    alignItems: 'center', justifyContent: 'center',
+  },
+
+  // Salary progress
+  progressTrack: {
+    height: 6,
+    backgroundColor: colors.bgDark,
+    borderRadius: borderRadius.pill,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: colors.accent,
+    borderRadius: borderRadius.pill,
+  },
+
+  // Stats grid
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.md,
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
   },
   statHalf: {
     width: (screenWidth - spacing.lg * 2 - spacing.md) / 2,
@@ -713,12 +778,23 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
 
-  // Section headers
+  // Section header
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: spacing.md,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flex: 1,
+  },
+  sectionIcon: {
+    width: 28, height: 28,
+    borderRadius: borderRadius.sm,
+    alignItems: 'center', justifyContent: 'center',
   },
   sectionTitle: {
     fontSize: fontSize.lg,
@@ -731,25 +807,31 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.semibold,
   },
 
+  // Legend (chart)
+  legendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendText: { fontSize: fontSize.xs, color: colors.textSecondary },
+  legendUnit: { fontSize: fontSize.xs, color: colors.textSecondary, marginLeft: 'auto', fontStyle: 'italic' },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+
   // List rows
   listRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: spacing.md,
+    gap: spacing.md,
   },
   listRowBorder: {
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  listRowLeft: {
-    flex: 1,
-    marginRight: spacing.md,
-  },
-  listRowRight: {
-    alignItems: 'flex-end',
-    gap: 6,
-  },
+  listRowMid: { flex: 1 },
+  listRowRight: { alignItems: 'flex-end', gap: 4 },
   listPrimary: {
     fontSize: fontSize.md,
     fontWeight: fontWeight.semibold,
@@ -761,32 +843,74 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginBottom: 2,
   },
-  listMeta: {
-    fontSize: fontSize.xs,
-    color: colors.textSecondary,
+  listMeta: { fontSize: fontSize.xs, color: colors.textSecondary },
+  listAmount: { fontSize: fontSize.md, fontWeight: fontWeight.bold },
+  rowMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 2, flexWrap: 'wrap' },
+
+  // Horizontal carousel cards
+  hScrollContent: {
+    gap: spacing.md,
+    paddingRight: spacing.sm,
   },
-  listAmount: {
+  hCard: {
+    width: 220,
+    backgroundColor: colors.bgCardLight,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderLeftWidth: 3,
+    padding: spacing.md,
+    gap: 6,
+  },
+  hCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  hCardName: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
+    color: colors.textPrimary,
+  },
+  hCardAmount: {
     fontSize: fontSize.lg,
     fontWeight: fontWeight.bold,
   },
-  rowMeta: {
+  hCardIssue: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    lineHeight: 18,
+    minHeight: 36,
+  },
+  hCardMeta: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginTop: 2,
+    flexWrap: 'wrap',
   },
-  billAmounts: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 2,
+
+  // Avatar
+  avatar: {
+    width: 38, height: 38,
+    borderRadius: 19,
+    borderWidth: 1,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  avatarText: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.bold,
   },
 
   // Empty state
-  emptyText: {
-    fontSize: fontSize.md,
-    color: colors.textSecondary,
-    textAlign: 'center',
+  empty: {
+    alignItems: 'center',
     paddingVertical: spacing.xxl,
+    gap: spacing.sm,
+  },
+  emptyText: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
   },
 });
 

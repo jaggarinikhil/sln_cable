@@ -26,6 +26,8 @@ export const PERMISSIONS = {
   viewOwnCollections: true,
   recordHandover: false,
   manageUsers: false,
+  viewExpenses: false,
+  manageExpenses: false,
   canOverrideGeneratedBy: false,
   canOverrideReceivedBy: false,
 };

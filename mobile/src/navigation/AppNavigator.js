@@ -18,6 +18,10 @@ import ReportsScreen from '../screens/ReportsScreen';
 import UserManagementScreen from '../screens/UserManagementScreen';
 import CustomerHistoryScreen from '../screens/CustomerHistoryScreen';
 import MoreScreen from '../screens/MoreScreen';
+import ExpensesScreen from '../screens/ExpensesScreen';
+import PersonalScreen from '../screens/PersonalScreen';
+import ExpenseReportScreen from '../screens/ExpenseReportScreen';
+import PersonalReportScreen from '../screens/PersonalReportScreen';
 
 // ---------------------------------------------------------------------------
 // Shared stack screen options (dark header)
@@ -94,6 +98,10 @@ function MoreNavigator() {
       <MoreStack.Screen name="Reports" component={ReportsScreen} options={{ title: 'Reports' }} />
       <MoreStack.Screen name="UserManagement" component={UserManagementScreen} options={{ title: 'User Management' }} />
       <MoreStack.Screen name="CustomerHistory" component={CustomerHistoryScreen} options={{ title: 'Customer History' }} />
+      <MoreStack.Screen name="Expenses" component={ExpensesScreen} options={{ title: 'Expenses' }} />
+      <MoreStack.Screen name="ExpenseReport" component={ExpenseReportScreen} options={{ title: 'Expense Report' }} />
+      <MoreStack.Screen name="Personal" component={PersonalScreen} options={{ title: 'Personal' }} />
+      <MoreStack.Screen name="PersonalReport" component={PersonalReportScreen} options={{ title: 'Personal Report' }} />
     </MoreStack.Navigator>
   );
 }

@@ -167,7 +167,14 @@ function WorkerSalaryView({ worker, salary, cycleStartStr, cycleStart, cycleEnd 
             r.type !== 'advance' &&
             (r.paymentDate || r.createdAt) >= cycleStartStr,
         )
-        .reduce((sum, r) => sum + (Number(r.cashAmount) || 0) + (Number(r.digitalAmount) || 0), 0),
+        .reduce(
+          (sum, r) =>
+            sum +
+            (Number(r.cashAmount) || 0) +
+            (Number(r.digitalAmount) || 0) +
+            (Number(r.advanceDeduction) || 0),
+          0,
+        ),
     [records, cycleStartStr],
   );
 
@@ -281,7 +288,14 @@ function OwnerWorkerCard({ worker, salary, addSalary, colorIdx, userName }) {
             r.type !== 'advance' &&
             (r.paymentDate || r.createdAt) >= cycleStartStr,
         )
-        .reduce((sum, r) => sum + (Number(r.cashAmount) || 0) + (Number(r.digitalAmount) || 0), 0),
+        .reduce(
+          (sum, r) =>
+            sum +
+            (Number(r.cashAmount) || 0) +
+            (Number(r.digitalAmount) || 0) +
+            (Number(r.advanceDeduction) || 0),
+          0,
+        ),
     [records, cycleStartStr],
   );
 

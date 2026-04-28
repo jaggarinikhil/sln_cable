@@ -17,6 +17,8 @@ const MENU_ITEMS = [
   { key: 'WorkHours', icon: 'time', label: 'Work Hours', permission: 'logOwnHours' },
   { key: 'Salary', icon: 'wallet', label: 'Salary', permission: 'viewOwnSalary' },
   { key: 'Reports', icon: 'bar-chart', label: 'Reports', permission: 'viewReports' },
+  { key: 'Expenses', icon: 'card', label: 'Business Expenses', permission: 'viewExpenses' },
+  { key: 'Personal', icon: 'briefcase', label: 'Personal Ledger', permission: null, ownerOnly: true },
   { key: 'UserManagement', icon: 'people-circle', label: 'User Management', permission: 'manageUsers' },
   { key: 'CustomerHistory', icon: 'document-text', label: 'Customer History', permission: null },
   { key: 'ChangePassword', icon: 'key', label: 'Change Password', permission: null },
@@ -27,9 +29,12 @@ export default function MoreScreen({ navigation }) {
   const permissions = auth.user?.permissions || {};
   const [showChangePw, setShowChangePw] = useState(false);
 
-  const visibleItems = MENU_ITEMS.filter(
-    (item) => item.permission === null || permissions[item.permission]
-  );
+  const isOwner = auth.user?.role === 'owner';
+  const visibleItems = MENU_ITEMS.filter((item) => {
+    if (item.ownerOnly && !isOwner) return false;
+    if (item.permission === null) return true;
+    return isOwner || permissions[item.permission];
+  });
 
   const handleMenuPress = (key) => {
     if (key === 'ChangePassword') {
