@@ -24,6 +24,8 @@ export const DataProvider = ({ children }) => {
     const [handovers, setHandovers] = useState([]);
     const [workHours, setWorkHours] = useState([]);
     const [salary, setSalary] = useState([]);
+    const [expenses, setExpenses] = useState([]);
+    const [personal, setPersonal] = useState([]);
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -51,6 +53,12 @@ export const DataProvider = ({ children }) => {
             }),
             onSnapshot(collection(db, 'users'), (snap) => {
                 setUsers(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+            }),
+            onSnapshot(collection(db, 'expenses'), (snap) => {
+                setExpenses(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+            }),
+            onSnapshot(collection(db, 'personal'), (snap) => {
+                setPersonal(snap.docs.map(d => ({ ...d.data(), id: d.id })));
             })
         ];
 
@@ -71,6 +79,10 @@ export const DataProvider = ({ children }) => {
             ...updates,
             updatedAt: new Date().toISOString()
         });
+    };
+
+    const deleteCustomer = async (id) => {
+        await deleteDoc(doc(db, 'customers', id));
     };
 
     const addBill = async (bill) => {
@@ -179,15 +191,59 @@ export const DataProvider = ({ children }) => {
         });
     };
 
+    const addExpense = async (expense) => {
+        await addDoc(collection(db, 'expenses'), {
+            ...expense,
+            createdAt: new Date().toISOString(),
+        });
+    };
+
+    const updateExpense = async (id, updates) => {
+        await updateDoc(doc(db, 'expenses', id), {
+            ...updates,
+            updatedAt: new Date().toISOString(),
+        });
+    };
+
+    const deleteExpense = async (id) => {
+        await updateDoc(doc(db, 'expenses', id), {
+            deleted: true,
+            deletedAt: new Date().toISOString(),
+        });
+    };
+
+    const addPersonal = async (entry) => {
+        await addDoc(collection(db, 'personal'), {
+            ...entry,
+            createdAt: new Date().toISOString(),
+        });
+    };
+
+    const updatePersonal = async (id, updates) => {
+        await updateDoc(doc(db, 'personal', id), {
+            ...updates,
+            updatedAt: new Date().toISOString(),
+        });
+    };
+
+    const deletePersonal = async (id) => {
+        await updateDoc(doc(db, 'personal', id), {
+            deleted: true,
+            deletedAt: new Date().toISOString(),
+        });
+    };
+
     return (
         <DataContext.Provider value={{
-            customers, addCustomer, updateCustomer,
+            customers, addCustomer, updateCustomer, deleteCustomer,
             bills, addBill, updateBill, updateMultipleBills,
             complaints, addComplaint, updateComplaintStatus, updateComplaint,
             users, addUser, updateUser,
             handovers,
             workHours, addWorkHours, updateWorkHours,
             salary, addSalary, updateSalary,
+            expenses, addExpense, updateExpense, deleteExpense,
+            personal, addPersonal, updatePersonal, deletePersonal,
             loading
         }}>
             {children}

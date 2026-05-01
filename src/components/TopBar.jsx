@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
     Users, Receipt, CreditCard, HardHat,
-    Clock, Banknote, FileText, UserCog, LogOut, History, Menu, X, KeyRound, Save
+    Clock, Banknote, FileText, UserCog, LogOut, History, Menu, X, KeyRound, Save, Wallet, User
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { storage } from '../utils/storage';
@@ -113,6 +113,8 @@ const navItems = [
     { to: '/salary', icon: <Banknote size={16} />, label: 'Salary', perm: 'viewOwnSalary' },
     { to: '/reports', icon: <FileText size={16} />, label: 'Reports', perm: 'viewReports' },
     { to: '/users', icon: <UserCog size={16} />, label: 'Users', perm: 'manageUsers' },
+    { to: '/expenses', icon: <Wallet size={16} />, label: 'Expenses', perm: 'manageUsers' },
+    { to: '/personal', icon: <User size={16} />, label: 'Personal', perm: 'manageUsers' },
 ];
 
 const TopBar = () => {

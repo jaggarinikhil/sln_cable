@@ -270,16 +270,33 @@ const OwnerDashboard = ({ customers, bills, complaints, navigate }) => {
     const totalOutstanding = bills.reduce((sum, b) => sum + (b.balance || 0), 0);
     const activeComplaints = complaints.filter(c => c.status !== 'Completed').length;
 
-    // Split collected this month by service type (proportional for 'both')
-    const tvCollected = thisMonthBills.reduce((sum, b) => {
+    const currentMonth = new Date().toISOString().slice(0, 7);
+
+    // Split collected and outstanding by service type (all-time)
+    const tvCollected = bills.reduce((sum, b) => {
         const total = b.totalAmount || 0;
-        const ratio = total > 0 ? (b.tvAmount || 0) / total : (b.serviceType === 'tv' ? 1 : 0);
-        return sum + (b.amountPaid || 0) * ratio;
+        let ratio = total > 0 ? (b.tvAmount || 0) / total : (b.serviceType === 'tv' ? 1 : (b.serviceType === 'both' ? 0.5 : 0));
+        const totalPayments = (b.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
+        return sum + totalPayments * ratio;
     }, 0);
-    const internetCollected = thisMonthBills.reduce((sum, b) => {
+
+    const internetCollected = bills.reduce((sum, b) => {
         const total = b.totalAmount || 0;
-        const ratio = total > 0 ? (b.internetAmount || 0) / total : (b.serviceType === 'internet' ? 1 : 0);
-        return sum + (b.amountPaid || 0) * ratio;
+        let ratio = total > 0 ? (b.internetAmount || 0) / total : (b.serviceType === 'internet' ? 1 : (b.serviceType === 'both' ? 0.5 : 0));
+        const totalPayments = (b.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
+        return sum + totalPayments * ratio;
+    }, 0);
+
+    const tvOutstanding = bills.reduce((sum, b) => {
+        const total = b.totalAmount || 0;
+        let ratio = total > 0 ? (b.tvAmount || 0) / total : (b.serviceType === 'tv' ? 1 : (b.serviceType === 'both' ? 0.5 : 0));
+        return sum + (b.balance || 0) * ratio;
+    }, 0);
+
+    const internetOutstanding = bills.reduce((sum, b) => {
+        const total = b.totalAmount || 0;
+        let ratio = total > 0 ? (b.internetAmount || 0) / total : (b.serviceType === 'internet' ? 1 : (b.serviceType === 'both' ? 0.5 : 0));
+        return sum + (b.balance || 0) * ratio;
     }, 0);
 
     const pendingBills = [...bills]
@@ -343,7 +360,7 @@ const OwnerDashboard = ({ customers, bills, complaints, navigate }) => {
                 <StatCard
                     title="TV Collected"
                     value={`₹${Math.round(tvCollected).toLocaleString('en-IN')}`}
-                    subtext="Cable TV this month"
+                    subtext="Total Cable TV"
                     icon={<Tv2 size={20} />}
                     color="168, 85, 247"
                     onClick={() => navigate('/billing', { state: { service: 'tv' } })}
@@ -351,18 +368,26 @@ const OwnerDashboard = ({ customers, bills, complaints, navigate }) => {
                 <StatCard
                     title="Internet Collected"
                     value={`₹${Math.round(internetCollected).toLocaleString('en-IN')}`}
-                    subtext="Internet this month"
+                    subtext="Total Internet"
                     icon={<Wifi size={20} />}
                     color="6, 182, 212"
                     onClick={() => navigate('/billing', { state: { service: 'internet' } })}
                 />
                 <StatCard
-                    title="Total Outstanding"
-                    value={`₹${totalOutstanding.toLocaleString('en-IN')}`}
-                    subtext="Unpaid balances"
+                    title="TV Outstanding"
+                    value={`₹${Math.round(tvOutstanding).toLocaleString('en-IN')}`}
+                    subtext="Pending Cable TV"
                     icon={<IndianRupee size={20} />}
                     color="248, 113, 113"
-                    onClick={() => navigate('/payments', { state: { tab: 'pending' } })}
+                    onClick={() => navigate('/payments', { state: { tab: 'pending', service: 'tv' } })}
+                />
+                <StatCard
+                    title="Internet Outstanding"
+                    value={`₹${Math.round(internetOutstanding).toLocaleString('en-IN')}`}
+                    subtext="Pending Internet"
+                    icon={<IndianRupee size={20} />}
+                    color="251, 146, 60"
+                    onClick={() => navigate('/payments', { state: { tab: 'pending', service: 'internet' } })}
                 />
                 <StatCard
                     title="Total Customers"

@@ -18,6 +18,8 @@ const Salary = lazy(() => import('./pages/Salary'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Reports = lazy(() => import('./pages/Reports'));
 const CustomerHistoryPage = lazy(() => import('./pages/CustomerHistoryPage'));
+const Expenses = lazy(() => import('./pages/Expenses'));
+const Personal = lazy(() => import('./pages/Personal'));
 
 function App() {
   return (
@@ -99,6 +101,18 @@ function App() {
               <Route path="/users" element={
                 <ProtectedRoute requires="manageUsers">
                   <Layout><UserManagement /></Layout>
+                </ProtectedRoute>
+              } />
+
+              <Route path="/expenses" element={
+                <ProtectedRoute requires="manageUsers">
+                  <Layout><Expenses /></Layout>
+                </ProtectedRoute>
+              } />
+
+              <Route path="/personal" element={
+                <ProtectedRoute requires="manageUsers">
+                  <Layout><Personal /></Layout>
                 </ProtectedRoute>
               } />
 

@@ -5,13 +5,13 @@ import { useAuth } from '../context/AuthContext';
 import CustomerModal from '../components/CustomerModal';
 import {
     Search, UserPlus, Phone, MapPin, Tv, Wifi,
-    Users, ChevronRight, Filter, IndianRupee
+    Users, ChevronRight, Filter, IndianRupee, Trash2
 } from 'lucide-react';
 
 const PAGE_SIZE = 20;
 
 const Customers = () => {
-    const { customers, bills, addCustomer, addBill } = useData();
+    const { customers, bills, addCustomer, addBill, deleteCustomer } = useData();
     const { user } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
@@ -252,7 +252,23 @@ const Customers = () => {
                                         })()}
                                     </td>
                                     <td>
-                                        <ChevronRight size={16} style={{ color: 'var(--text-secondary)' }} />
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            {user?.role === 'owner' && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (window.confirm('Are you sure you want to delete this customer?')) {
+                                                            deleteCustomer(c.id);
+                                                        }
+                                                    }}
+                                                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
+                                                    title="Delete Customer"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            )}
+                                            <ChevronRight size={16} style={{ color: 'var(--text-secondary)' }} />
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
@@ -299,6 +315,19 @@ const Customers = () => {
                                         ? <span className="cust-due-amt">₹{due.toLocaleString('en-IN')}</span>
                                         : <span className="cust-due-clear">Clear</span>;
                                 })()}
+                                {user?.role === 'owner' && (
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (window.confirm('Are you sure you want to delete this customer?')) {
+                                                deleteCustomer(c.id);
+                                            }
+                                        }}
+                                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                )}
                                 <ChevronRight size={18} style={{ color: 'var(--text-secondary)' }} />
                             </div>
                         </div>

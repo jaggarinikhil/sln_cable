@@ -35,7 +35,17 @@ const CHART_AXIS_PROPS = {
 };
 
 // ── Helper ──────────────────────────────────────────────────────────────────
-const toLocalDate = (d) => new Date(d).toLocaleDateString('en-CA'); // YYYY-MM-DD
+const toLocalDate = (d) => {
+    try {
+        if (!d) return '';
+        const dt = new Date(d);
+        if (isNaN(dt)) return '';
+        const y = dt.getFullYear();
+        const m = String(dt.getMonth() + 1).padStart(2, '0');
+        const day = String(dt.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    } catch { return ''; }
+};
 
 const fmt = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
 
@@ -81,7 +91,7 @@ const DailyReport = () => {
     const { bills, complaints, users, updateBill, updateComplaint, workHours: workHoursAll, salary: salaryAll } = useData();
     const { user: currentUser } = useAuth();
 
-    const today = new Date().toLocaleDateString('en-CA');
+    const today = toLocalDate(new Date());
     const [date, setDate] = useState(today);
 
     const isOwner = currentUser?.role?.toLowerCase() === 'owner';
@@ -643,10 +653,12 @@ const MonthlyReport = () => {
     const monthLabel = `${monthNames[selectedMonth]} ${selectedYear}`;
 
     const inSelectedMonth = (dateStr) => {
-        try {
-            const d = new Date(dateStr);
-            return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
-        } catch { return false; }
+        if (!dateStr) return false;
+        const parts = dateStr.split('-');
+        if (parts.length >= 2) {
+            return parseInt(parts[1], 10) - 1 === selectedMonth && parseInt(parts[0], 10) === selectedYear;
+        }
+        return false;
     };
 
     const filteredBills = bills.filter(b => inSelectedMonth(b.generatedDate));
