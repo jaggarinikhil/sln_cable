@@ -404,7 +404,7 @@ const Customers = () => {
                 .cust-title {
                     font-size: 1.8rem;
                     font-weight: 800;
-                    background: linear-gradient(to right, #fff, #94a3b8);
+                    background: linear-gradient(to right, var(--text-primary), #94a3b8);
                     -webkit-background-clip: text;
                     background-clip: text;
                     -webkit-text-fill-color: transparent;
@@ -499,7 +499,7 @@ const Customers = () => {
                     padding: 2px 6px;
                     border-radius: 6px;
                 }
-                .cust-clear:hover { background: rgba(255,255,255,0.08); color: var(--text-primary); }
+                .cust-clear:hover { background: var(--bg-input-hover, var(--bg-card-light)); color: var(--text-primary); }
 
                 .cust-filter-wrap {
                     display: flex;
@@ -521,7 +521,7 @@ const Customers = () => {
                     appearance: none;
                     padding-right: 4px;
                 }
-                .cust-filter-select option { background: #0f172a; }
+                .cust-filter-select option { background: var(--bg-modal); color: var(--text-primary); }
 
                 /* Results Info */
                 .cust-results-info {
@@ -558,7 +558,7 @@ const Customers = () => {
                     border-collapse: collapse;
                 }
                 .cust-table thead tr {
-                    background: rgba(255,255,255,0.03);
+                    background: var(--bg-subtle, var(--bg-card-light));
                 }
                 .cust-table th {
                     padding: 14px 20px;
@@ -647,7 +647,7 @@ const Customers = () => {
                     border: 1px solid rgba(6,182,212,0.25);
                 }
                 .cust-badge-none {
-                    background: rgba(255,255,255,0.05);
+                    background: var(--bg-subtle, var(--bg-card-light));
                     color: var(--text-secondary);
                     border: 1px solid var(--border);
                 }
@@ -657,7 +657,7 @@ const Customers = () => {
                     font-family: monospace;
                     font-size: 0.88rem;
                     color: var(--text-secondary);
-                    background: rgba(255,255,255,0.05);
+                    background: var(--bg-subtle, var(--bg-card-light));
                     padding: 3px 10px;
                     border-radius: 8px;
                     border: 1px solid var(--border);

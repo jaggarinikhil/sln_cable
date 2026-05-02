@@ -2,8 +2,10 @@ import React, { useState, useRef } from 'react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import {
-    User, Plus, X, Trash2, Search, ArrowUpCircle, ArrowDownCircle, Wallet, Pencil, Calendar, Briefcase
+    User, Plus, X, Trash2, Search, ArrowUpCircle, ArrowDownCircle, Wallet, Pencil, Calendar, Briefcase, MapPin
 } from 'lucide-react';
+
+const SYMBOL = { INR: '₹', USD: '$' };
 import { useToast } from '../components/Toast';
 import EmptyState from '../components/EmptyState';
 import CategoryDonut from '../components/CategoryDonut';
@@ -104,6 +106,8 @@ const Personal = () => {
         customCategory: '',
         customAccount: '',
         subCategory: '',
+        currency: 'INR',
+        location: '',
     };
     const [form, setForm] = useState(blankForm);
 
@@ -129,6 +133,8 @@ const Personal = () => {
             customCategory: form.category === 'other' ? form.customCategory.trim() : '',
             customAccount: form.account === 'other' ? form.customAccount.trim() : '',
             subCategory: getCategory(form.category)?.sub ? form.subCategory : '',
+            currency: form.currency || 'INR',
+            location: (form.location || '').trim(),
         };
 
         if (editingId) {
@@ -159,6 +165,8 @@ const Personal = () => {
             customCategory: entry.customCategory || '',
             customAccount: entry.customAccount || '',
             subCategory: entry.subCategory || '',
+            currency: entry.currency || 'INR',
+            location: entry.location || '',
         });
         setEditingId(entry.id);
         setIsAdding(true);
@@ -207,9 +215,14 @@ const Personal = () => {
         }))
         .filter(d => d.value > 0);
 
-    const totalIncome = activeEntries.filter(e => e.type === 'income').reduce((sum, e) => sum + (e.amount || 0), 0);
-    const totalExpense = activeEntries.filter(e => e.type === 'expense').reduce((sum, e) => sum + (e.amount || 0), 0);
+    const isINR = (e) => (e.currency || 'INR') === 'INR';
+    const isUSD = (e) => e.currency === 'USD';
+    const totalIncome = activeEntries.filter(e => e.type === 'income' && isINR(e)).reduce((sum, e) => sum + (e.amount || 0), 0);
+    const totalExpense = activeEntries.filter(e => e.type === 'expense' && isINR(e)).reduce((sum, e) => sum + (e.amount || 0), 0);
     const net = totalIncome - totalExpense;
+    const totalIncomeUSD = activeEntries.filter(e => e.type === 'income' && isUSD(e)).reduce((sum, e) => sum + (e.amount || 0), 0);
+    const totalExpenseUSD = activeEntries.filter(e => e.type === 'expense' && isUSD(e)).reduce((sum, e) => sum + (e.amount || 0), 0);
+    const netUSD = totalIncomeUSD - totalExpenseUSD;
 
     if (!isOwner) {
         return (
@@ -238,6 +251,11 @@ const Personal = () => {
                     <span className="pp-hero-value" style={{ color: net >= 0 ? '#10b981' : '#ef4444' }}>
                         {net >= 0 ? '+' : '−'}<AnimatedNumber value={Math.abs(net)} prefix="₹" />
                     </span>
+                    {(totalIncomeUSD > 0 || totalExpenseUSD > 0) && (
+                        <span className="pp-hero-sub" style={{ color: netUSD >= 0 ? '#10b981' : '#ef4444' }}>
+                            {netUSD >= 0 ? '+' : '−'}${Math.abs(netUSD).toLocaleString('en-US')} in USD
+                        </span>
+                    )}
                     <span className="pp-hero-sub">{activeEntries.length} entries logged</span>
                 </div>
                 <div className="pp-hero-split">
@@ -536,7 +554,7 @@ const Personal = () => {
             <style>{`
                 .personal-page { padding: 24px; max-width: 1000px; margin: 0 auto; }
                 .pp-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; }
-                .pp-title { font-size: 1.8rem; font-weight: 800; background: linear-gradient(to right, #fff, #94a3b8); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+                .pp-title { font-size: 1.8rem; font-weight: 800; background: linear-gradient(to right, var(--text-primary), #94a3b8); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
                 .pp-sub { color: var(--text-secondary); font-size: 0.9rem; margin-top: 4px; }
                 .pp-add-btn { display: flex; align-items: center; gap: 8px; background: var(--accent-gradient); border: none; padding: 10px 18px; border-radius: 12px; color: white; font-weight: 700; cursor: pointer; transition: all 0.2s; }
                 .pp-add-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(99,102,241,0.4); }
@@ -578,10 +596,10 @@ const Personal = () => {
 
                 .pp-filters { display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; background: var(--bg-card); padding: 16px; border-radius: 16px; border: 1px solid var(--border); }
                 .pp-toolbar-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-                .pp-search-box { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.2); padding: 9px 14px; border-radius: 10px; border: 1px solid var(--border); flex: 1; min-width: 180px; }
+                .pp-search-box { display: flex; align-items: center; gap: 10px; background: var(--bg-input, var(--bg-card-light)); padding: 9px 14px; border-radius: 10px; border: 1px solid var(--border); flex: 1; min-width: 180px; }
 
                 .pp-dropdown {
-                    background: rgba(255,255,255,0.03);
+                    background: var(--bg-subtle, var(--bg-card-light));
                     border: 1px solid var(--border);
                     color: var(--text-secondary);
                     border-radius: 10px;
@@ -615,7 +633,7 @@ const Personal = () => {
                     padding: 9px 12px;
                     border-radius: 10px;
                     border: 1px solid var(--border);
-                    background: rgba(255,255,255,0.03);
+                    background: var(--bg-subtle, var(--bg-card-light));
                     color: var(--text-secondary);
                     cursor: pointer;
                     transition: all 0.2s ease;
@@ -661,21 +679,21 @@ const Personal = () => {
                 .pp-search-box input { flex: 1; background: transparent; border: none; outline: none; color: var(--text-primary); font-size: 0.95rem; }
                 
                 .pp-type-filters { display: flex; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
-                .pp-type-btn { padding: 6px 14px; border-radius: 8px; font-weight: 600; font-size: 0.85rem; border: 1px solid var(--border); background: rgba(255,255,255,0.05); color: var(--text-secondary); cursor: pointer; }
-                .pp-type-btn.active { background: rgba(255,255,255,0.15); color: var(--text-primary); border-color: var(--border-bright); }
+                .pp-type-btn { padding: 6px 14px; border-radius: 8px; font-weight: 600; font-size: 0.85rem; border: 1px solid var(--border); background: var(--bg-subtle, var(--bg-card-light)); color: var(--text-secondary); cursor: pointer; }
+                .pp-type-btn.active { background: var(--bg-input-hover, var(--bg-card-light)); color: var(--text-primary); border-color: var(--border-bright); }
                 .pp-type-btn.income.active { color: #10b981; border-color: #10b981; background: rgba(16,185,129,0.1); }
                 .pp-type-btn.expense.active { color: #ef4444; border-color: #ef4444; background: rgba(239,68,68,0.1); }
 
                 .pp-categories { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
                 .pp-cat-label { font-size: 0.8rem; color: var(--text-secondary); font-weight: 600; margin-right: 4px; }
-                .pp-cat-btn { padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; border: 1px solid var(--border); background: rgba(255,255,255,0.05); color: var(--text-secondary); cursor: pointer; transition: all 0.2s; }
-                .pp-cat-btn:hover { background: rgba(255,255,255,0.1); }
+                .pp-cat-btn { padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; border: 1px solid var(--border); background: var(--bg-subtle, var(--bg-card-light)); color: var(--text-secondary); cursor: pointer; transition: all 0.2s; }
+                .pp-cat-btn:hover { background: var(--bg-input-hover, var(--bg-card-light)); }
                 
                 .pp-list { display: flex; flex-direction: column; gap: 12px; }
                 .pp-empty { text-align: center; padding: 40px; color: var(--text-secondary); font-size: 0.95rem; background: var(--bg-card); border-radius: 16px; border: 1px dashed var(--border); }
                 
                 .pp-card { display: flex; align-items: center; gap: 16px; background: var(--bg-card); padding: 14px 18px; border-radius: 16px; border: 1px solid var(--border); border-left-width: 4px; transition: all 0.2s; }
-                .pp-card:hover { border-right-color: rgba(255,255,255,0.2); border-top-color: rgba(255,255,255,0.2); border-bottom-color: rgba(255,255,255,0.2); }
+                .pp-card:hover { border-right-color: var(--border-bright); border-top-color: var(--border-bright); border-bottom-color: var(--border-bright); }
                 .pp-card-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
                 .pp-card-body { flex: 1; }
                 .pp-card-desc { font-weight: 600; font-size: 0.95rem; margin-bottom: 6px; }
@@ -701,10 +719,10 @@ const Personal = () => {
 
                 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
                 .modal-content { background: var(--bg-card); width: 90%; max-width: 480px; max-height: 90vh; border-radius: 20px; border: 1px solid var(--border); display: flex; flex-direction: column; animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
-                .modal-header { padding: 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); }
+                .modal-header { padding: 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-subtle, var(--bg-card-light)); }
                 .modal-header h2 { font-size: 1.2rem; font-weight: 700; margin: 0; }
                 .mc-close { background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px; display: flex; transition: color 0.2s; }
-                .mc-close:hover { color: white; }
+                .mc-close:hover { color: var(--text-primary); }
                 .modal-scrollable { overflow-y: auto; padding: 20px; }
                 
                 .pp-type-toggle { display: flex; gap: 10px; margin-bottom: 20px; }
@@ -714,10 +732,10 @@ const Personal = () => {
 
                 .form-group { display: flex; flex-direction: column; gap: 6px; }
                 .form-group label { font-size: 0.78rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
-                .form-group input, .pp-select, .pp-textarea { background: rgba(0,0,0,0.2); border: 1px solid var(--border); padding: 12px; border-radius: 10px; color: white; font-size: 0.95rem; font-family: inherit; transition: border-color 0.2s; }
+                .form-group input, .pp-select, .pp-textarea { background: var(--bg-input, var(--bg-card-light)); border: 1px solid var(--border); padding: 12px; border-radius: 10px; color: var(--text-primary); font-size: 0.95rem; font-family: inherit; transition: border-color 0.2s; }
                 .form-group input:focus, .pp-select:focus, .pp-textarea:focus { border-color: var(--accent); outline: none; }
                 .pp-select { cursor: pointer; }
-                .pp-select option { background: var(--bg-card); color: white; }
+                .pp-select option { background: var(--bg-card); color: var(--text-primary); }
                 .pp-textarea { resize: vertical; min-height: 60px; }
 
                 @keyframes slideUp {

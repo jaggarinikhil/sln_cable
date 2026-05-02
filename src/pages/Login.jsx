@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Lock, User, LogIn, Tv } from 'lucide-react';
+import { Lock, User, LogIn } from 'lucide-react';
+import Logo from '../components/Logo';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -34,8 +35,8 @@ const Login = () => {
   return (
     <div className="login-container">
       <div className="login-card">
-        <div className="login-brand"><Tv size={28} /></div>
-        <h1>SLN CABLE</h1>
+        <div className="login-brand"><Logo size={56} /></div>
+        <h1>SLN Cable &amp; Networks</h1>
         <p>Billing Management System</p>
 
         {error && <div className="error-alert">{error}</div>}
@@ -123,8 +124,8 @@ const Login = () => {
         .login-brand {
           width: 56px; height: 56px; border-radius: 16px;
           margin: 0 auto 16px; display: flex; align-items: center; justify-content: center;
-          background: rgba(99,102,241,0.12); color: var(--accent);
-          border: 1px solid rgba(99,102,241,0.25);
+          overflow: hidden;
+          box-shadow: 0 8px 24px rgba(99,102,241,0.35);
         }
         .login-btn:hover { background-color: var(--accent-hover); }
         .error-alert {

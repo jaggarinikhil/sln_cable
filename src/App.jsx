@@ -6,6 +6,7 @@ import { ToastProvider } from './components/Toast';
 import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Lazy-loaded page components — each page is only fetched when first navigated to
 const Login = lazy(() => import('./pages/Login'));
@@ -22,9 +23,11 @@ const Reports = lazy(() => import('./pages/Reports'));
 const CustomerHistoryPage = lazy(() => import('./pages/CustomerHistoryPage'));
 const Expenses = lazy(() => import('./pages/Expenses'));
 const Personal = lazy(() => import('./pages/Personal'));
+const Settings = lazy(() => import('./pages/Settings'));
 
 function App() {
   return (
+    <ErrorBoundary>
     <AuthProvider>
       <DataProvider>
         <ToastProvider>
@@ -120,6 +123,12 @@ function App() {
                 </ProtectedRoute>
               } />
 
+              <Route path="/settings" element={
+                <ProtectedRoute>
+                  <Layout><Settings /></Layout>
+                </ProtectedRoute>
+              } />
+
               <Route path="*" element={<Navigate to="/login" replace />} />
             </Routes>
           </Suspense>
@@ -128,6 +137,7 @@ function App() {
         </ToastProvider>
       </DataProvider>
     </AuthProvider>
+    </ErrorBoundary>
   );
 }
 

@@ -469,8 +469,8 @@ const CustomerModal = ({ customer: editingCustomer, initialName, onClose, onSave
 
             <style>{`
                 .cm-sheet {
-                    background: #0f172a;
-                    border: 1px solid rgba(255,255,255,0.12);
+                    background: var(--bg-modal);
+                    border: 1px solid var(--border-bright);
                     border-radius: 24px;
                     width: 100%;
                     max-width: 480px;
@@ -501,7 +501,7 @@ const CustomerModal = ({ customer: editingCustomer, initialName, onClose, onSave
                     margin-top: 3px;
                 }
                 .cm-close {
-                    background: rgba(255,255,255,0.06);
+                    background: var(--bg-input-hover, var(--bg-card-light));
                     border: 1px solid var(--border);
                     color: var(--text-secondary);
                     cursor: pointer;
@@ -514,7 +514,7 @@ const CustomerModal = ({ customer: editingCustomer, initialName, onClose, onSave
                     transition: all 0.2s;
                     flex-shrink: 0;
                 }
-                .cm-close:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+                .cm-close:hover { background: var(--bg-input-hover, var(--bg-card-light)); color: var(--text-primary); }
 
                 .cm-body {
                     padding: 20px 24px 24px;
@@ -547,7 +547,7 @@ const CustomerModal = ({ customer: editingCustomer, initialName, onClose, onSave
                 .cm-textarea-icon { top: 14px; align-self: flex-start; }
                 .cm-input {
                     width: 100%;
-                    background: rgba(255,255,255,0.05);
+                    background: var(--bg-input, var(--bg-card-light));
                     border: 1px solid var(--border);
                     border-radius: 12px;
                     padding: 13px 14px 13px 42px;
@@ -577,7 +577,7 @@ const CustomerModal = ({ customer: editingCustomer, initialName, onClose, onSave
                     align-items: center;
                     gap: 12px;
                     padding: 14px;
-                    background: rgba(255,255,255,0.04);
+                    background: var(--bg-subtle, var(--bg-card-light));
                     border: 2px solid var(--border);
                     border-radius: 14px;
                     cursor: pointer;
@@ -665,7 +665,7 @@ const CustomerModal = ({ customer: editingCustomer, initialName, onClose, onSave
                 .cm-btn-cancel {
                     flex: 1;
                     padding: 13px;
-                    background: rgba(255,255,255,0.05);
+                    background: var(--bg-input, var(--bg-card-light));
                     border: 1px solid var(--border);
                     color: var(--text-secondary);
                     border-radius: 12px;
@@ -675,7 +675,7 @@ const CustomerModal = ({ customer: editingCustomer, initialName, onClose, onSave
                     transition: all 0.2s;
                     font-family: inherit;
                 }
-                .cm-btn-cancel:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+                .cm-btn-cancel:hover { background: var(--bg-input-hover, var(--bg-card-light)); color: var(--text-primary); }
                 .cm-btn-save {
                     flex: 2;
                     padding: 13px;
@@ -709,7 +709,7 @@ const CustomerModal = ({ customer: editingCustomer, initialName, onClose, onSave
                 .cm-bill-svc-row { display: flex; flex-direction: column; gap: 10px; }
                 .cm-bill-svc-btn {
                     display: flex; align-items: center; gap: 14px; padding: 14px 16px;
-                    background: rgba(255,255,255,0.04); border: 2px solid var(--border);
+                    background: var(--bg-subtle, var(--bg-card-light)); border: 2px solid var(--border);
                     border-radius: 14px; cursor: pointer; color: var(--text-secondary);
                     text-align: left; transition: all 0.2s; font-family: inherit; width: 100%;
                 }

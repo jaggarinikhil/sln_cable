@@ -8,6 +8,7 @@ import {
     ChevronRight, X, ArrowRight
 } from 'lucide-react';
 import { generateWhatsAppLink, formatBillMessage } from '../utils/whatsapp';
+import { Button } from '../components/ui';
 
 /* ─── Generate Bill Modal ───────────────────────────────────── */
 const GenerateBillModal = ({ onClose, preselectedCustomer }) => {
@@ -218,9 +219,9 @@ const GenerateBillModal = ({ onClose, preselectedCustomer }) => {
                                 <strong>₹{formData.totalAmount.toLocaleString('en-IN')}</strong>
                             </div>
 
-                            <button type="submit" className="bm-submit blue">
-                                <Receipt size={17} /> Generate Bill
-                            </button>
+                            <Button type="submit" variant="primary" icon={<Receipt size={14} />} fullWidth className="bm-submit blue">
+                                Generate Bill
+                            </Button>
                         </form>
                     )}
                 </div>

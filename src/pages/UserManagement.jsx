@@ -4,6 +4,7 @@ import { X, Save, Shield, UserPlus, Lock, Edit2, CheckCircle, XCircle, Crown, Wr
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { useToast } from '../components/Toast';
+import { Button, Badge } from '../components/ui';
 
 /* ─── Reset Password Modal ──────────────────────────────────── */
 const ResetPasswordModal = ({ user: targetUser, onClose, onSave }) => {
@@ -479,9 +480,9 @@ const UserManagement = () => {
                     <h1 className="um-title">Users</h1>
                     <p className="um-sub">{users.length} users · {users.filter(u => u.active).length} active</p>
                 </div>
-                <button className="btn-primary" onClick={() => { setEditingUser(null); setModalOpen(true); }}>
-                    <UserPlus size={18} /> Add User
-                </button>
+                <Button variant="primary" icon={<UserPlus size={14} />} onClick={() => { setEditingUser(null); setModalOpen(true); }}>
+                    Add User
+                </Button>
             </div>
 
             <div className="um-list">
@@ -503,10 +504,9 @@ const UserManagement = () => {
                                     </div>
                                     <span className="um-card-username">@{u.username}</span>
                                     <div className="um-card-meta">
-                                        <span className={`um-role-badge ${u.role}`}>
-                                            {u.role === 'owner' ? <Crown size={11} /> : <Wrench size={11} />}
-                                            {u.role}
-                                        </span>
+                                        <Badge variant={u.role === 'owner' ? 'accent' : 'info'} icon={u.role === 'owner' ? <Crown size={11} /> : <Wrench size={11} />} size="sm">
+                                            {u.role === 'owner' ? 'Owner' : 'Worker'}
+                                        </Badge>
                                         <span className="um-perms-count">
                                             <Shield size={11} /> {enabledPerms}/{totalPerms} perms
                                         </span>

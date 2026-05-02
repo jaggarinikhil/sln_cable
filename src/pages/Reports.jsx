@@ -2,15 +2,18 @@ import React, { useState } from 'react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import {
-    Calendar, FileText, ChevronDown, ChevronRight,
+    Calendar, FileText, ChevronDown, ChevronRight, ChevronLeft,
     Receipt, Wallet, AlertCircle, Clock, IndianRupee, Users,
-    BarChart3, PieChart as PieIcon, CreditCard, TrendingUp, Banknote, User
+    BarChart3, PieChart as PieIcon, CreditCard, TrendingUp, Banknote, User,
+    Inbox, Activity
 } from 'lucide-react';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
     PieChart, Pie, Cell, ResponsiveContainer,
     AreaChart, Area, ReferenceLine
 } from 'recharts';
+import AnimatedNumber from '../components/AnimatedNumber';
+import EmptyStateUI from '../components/EmptyState';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#a855f7', '#ec4899'];
 const C_TV = '#a855f7';
@@ -83,8 +86,13 @@ const SectionCard = ({ icon: Icon, title, count, accentColor, children, defaultO
 };
 
 // ── Empty State ───────────────────────────────────────────────────────────────
-const EmptyState = ({ label }) => (
-    <p className="section-empty">No {label} for this date.</p>
+const EmptyState = ({ label, icon, accent }) => (
+    <EmptyStateUI
+        icon={icon || Inbox}
+        title={`No ${label}`}
+        description={`Nothing to show here yet.`}
+        accent={accent || '#6366f1'}
+    />
 );
 
 // ── Daily Report ──────────────────────────────────────────────────────────────
@@ -232,7 +240,7 @@ const DailyReport = () => {
                     </div>
                     <div>
                         <p className="daily-stat-label">Total Billed</p>
-                        <p className="daily-stat-value" style={{ color: '#6366f1' }}>{fmt(totalBilled)}</p>
+                        <p className="daily-stat-value" style={{ color: '#6366f1' }}><AnimatedNumber value={totalBilled} prefix="₹" /></p>
                         <p className="daily-stat-sub">{dayBills.length} bill{dayBills.length !== 1 ? 's' : ''}</p>
                     </div>
                 </div>
@@ -242,7 +250,7 @@ const DailyReport = () => {
                     </div>
                     <div>
                         <p className="daily-stat-label">Total Collected</p>
-                        <p className="daily-stat-value" style={{ color: '#10b981' }}>{fmt(totalCollected)}</p>
+                        <p className="daily-stat-value" style={{ color: '#10b981' }}><AnimatedNumber value={totalCollected} prefix="₹" /></p>
                         <p className="daily-stat-sub">{dayPayments.length} payment{dayPayments.length !== 1 ? 's' : ''}</p>
                     </div>
                 </div>
@@ -636,14 +644,13 @@ const DailyReport = () => {
 };
 
 // ── Monthly Report ────────────────────────────────────────────────────────────
-const MonthlyReport = () => {
+const MonthlyReport = ({ detailSection, setDetailSection }) => {
     const { bills, complaints, updateBill, users, workHours: workHoursAll, salary: salaryAll } = useData();
     const { user: currentUser } = useAuth();
 
     const now = new Date();
     const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
     const [selectedYear, setSelectedYear] = useState(now.getFullYear());
-    const [detailSection, setDetailSection] = useState(null); // null | 'bills' | 'complaints' | 'hours'
 
     const isOwner = currentUser?.role?.toLowerCase() === 'owner';
 
@@ -729,9 +736,6 @@ const MonthlyReport = () => {
     // ── Detail: Bills ─────────────────────────────────────────────────────────
     if (detailSection === 'bills') return (
         <div className="report-view">
-            <button className="mr-back-btn" onClick={() => setDetailSection(null)}>
-                ← {monthLabel} Overview
-            </button>
             <div className="mr-detail-header">
                 <Receipt size={20} style={{ color: '#6366f1' }} />
                 <div>
@@ -740,7 +744,7 @@ const MonthlyReport = () => {
                 </div>
             </div>
             {filteredBills.length === 0 ? (
-                <p className="section-empty" style={{ padding: '24px 0' }}>No bills generated this month.</p>
+                <EmptyStateUI icon={Receipt} title="No bills generated" description="No bills generated this month." accent="#6366f1" />
             ) : (
                 <div className="section-list">
                     {filteredBills.map((b, idx) => (
@@ -774,9 +778,6 @@ const MonthlyReport = () => {
     // ── Detail: Payments Collected ────────────────────────────────────────────
     if (detailSection === 'payments') return (
         <div className="report-view">
-            <button className="mr-back-btn" onClick={() => setDetailSection(null)}>
-                ← {monthLabel} Overview
-            </button>
             <div className="mr-detail-header">
                 <Wallet size={20} style={{ color: '#10b981' }} />
                 <div>
@@ -785,7 +786,7 @@ const MonthlyReport = () => {
                 </div>
             </div>
             {filteredPayments.length === 0 ? (
-                <p className="section-empty" style={{ padding: '24px 0' }}>No payments recorded this month.</p>
+                <EmptyStateUI icon={Wallet} title="No payments" description="No payments recorded this month." accent="#10b981" />
             ) : (
                 <div className="section-list">
                     {[...filteredPayments].sort((a, b) => new Date(b.date) - new Date(a.date)).map((p, idx) => (
@@ -812,9 +813,6 @@ const MonthlyReport = () => {
     // ── Detail: Complaints ────────────────────────────────────────────────────
     if (detailSection === 'complaints') return (
         <div className="report-view">
-            <button className="mr-back-btn" onClick={() => setDetailSection(null)}>
-                ← {monthLabel} Overview
-            </button>
             <div className="mr-detail-header">
                 <AlertCircle size={20} style={{ color: '#ef4444' }} />
                 <div>
@@ -823,7 +821,7 @@ const MonthlyReport = () => {
                 </div>
             </div>
             {monthComplaints.length === 0 ? (
-                <p className="section-empty" style={{ padding: '24px 0' }}>No complaints this month.</p>
+                <EmptyStateUI icon={AlertCircle} title="No complaints" description="No complaints filed this month." accent="#ef4444" />
             ) : (
                 <div className="section-list">
                     {monthComplaints.map((c, idx) => (
@@ -849,9 +847,6 @@ const MonthlyReport = () => {
     // ── Detail: Work Hours ────────────────────────────────────────────────────
     if (detailSection === 'hours') return (
         <div className="report-view">
-            <button className="mr-back-btn" onClick={() => setDetailSection(null)}>
-                ← {monthLabel} Overview
-            </button>
             <div className="mr-detail-header">
                 <Clock size={20} style={{ color: '#f59e0b' }} />
                 <div>
@@ -860,7 +855,7 @@ const MonthlyReport = () => {
                 </div>
             </div>
             {workerHourGroups.length === 0 ? (
-                <p className="section-empty" style={{ padding: '24px 0' }}>No work hours logged this month.</p>
+                <EmptyStateUI icon={Clock} title="No work hours" description="No work hours logged this month." accent="#f59e0b" />
             ) : workerHourGroups.map((wg, gi) => (
                 <div key={gi}>
                     <div className="worker-group-header" style={{ marginBottom: 8 }}>
@@ -991,7 +986,7 @@ const MonthlyReport = () => {
                                 })}
                             </div>
                         </>
-                    ) : <div className="empty-chart">No data</div>}
+                    ) : <EmptyStateUI icon={BarChart3} title="No data" description="Nothing to chart for this period." accent="#6366f1" />}
                 </div>
 
                 {/* Collection Modes Donut */}
@@ -1029,14 +1024,16 @@ const MonthlyReport = () => {
                                 })}
                             </div>
                         </>
-                    ) : <div className="empty-chart">No data</div>}
+                    ) : <EmptyStateUI icon={BarChart3} title="No data" description="Nothing to chart for this period." accent="#6366f1" />}
                 </div>
 
                 {/* Worker-wise Collection horizontal stacked bar */}
                 <div className="card chart-card wide">
                     <h4 className="chart-heading"><BarChart3 size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6, color: 'var(--text-secondary)' }} />Worker-wise Collection</h4>
+                    {workerData.length === 0 ? (
+                        <EmptyStateUI icon={BarChart3} title="No data" description="Nothing to chart for this period." accent="#6366f1" />
+                    ) : (
                     <ResponsiveContainer width="100%" height={Math.max(200, workerData.length * 56)}>
-                        {workerData.length > 0 ? (
                             <BarChart data={workerData} layout="vertical" barSize={16}>
                                 <defs>
                                     <linearGradient id="mGradCash" x1="0" y1="0" x2="1" y2="0">
@@ -1056,8 +1053,8 @@ const MonthlyReport = () => {
                                 <Bar dataKey="cash" name="Cash" stackId="a" fill="url(#mGradCash)" />
                                 <Bar dataKey="online" name="Online" stackId="a" fill="url(#mGradDig)" radius={[4, 4, 4, 4]} />
                             </BarChart>
-                        ) : <div className="empty-chart">No data</div>}
                     </ResponsiveContainer>
+                    )}
                 </div>
             </div>
 
@@ -1069,7 +1066,7 @@ const MonthlyReport = () => {
                     <span className="mr-worker-card-total">{filteredPayments.length} payments · {fmt(totalCollected)}</span>
                 </div>
                 {workerData.length === 0 ? (
-                    <p className="section-empty" style={{ padding: '12px 20px' }}>No payments recorded this month.</p>
+                    <div style={{ padding: 16 }}><EmptyStateUI icon={Wallet} title="No payments recorded" description="No payments collected this month." accent="#10b981" /></div>
                 ) : (
                     <div className="mr-worker-table-wrap">
                         <table className="mr-worker-table">
@@ -1138,30 +1135,101 @@ const MonthlyReport = () => {
 // ── Root Page ─────────────────────────────────────────────────────────────────
 const Reports = () => {
     const [activeTab, setActiveTab] = useState('daily');
+    const [detailSection, setDetailSection] = useState(null); // monthly drill-down: null | 'bills' | 'payments' | 'complaints' | 'hours'
+
+    const sectionLabels = {
+        bills: 'Bills Generated',
+        payments: 'Payments Collected',
+        complaints: 'Complaints',
+        hours: 'Work Hours',
+    };
+    const isDrilled = activeTab === 'monthly' && !!detailSection;
+
+    const switchTab = (key) => {
+        setDetailSection(null);
+        setActiveTab(key);
+    };
 
     return (
         <div className="reports-page">
-            <div className="section-header">
-                <h1>Reports</h1>
+            <div className="rp-hero">
+                <div className="rp-hero-icon"><Activity size={26} /></div>
+                <div className="rp-hero-text">
+                    <h1 className="rp-hero-title">Reports &amp; Insights</h1>
+                    <p className="rp-hero-sub">Detailed metrics across customers, payments, and operations</p>
+                </div>
             </div>
 
-            <div className="rp-tab-bar">
-                {[['daily', Calendar, 'Daily Report'], ['monthly', FileText, 'Monthly Report']].map(([key, Icon, label]) => (
-                    <button key={key} className={`rp-tab ${activeTab === key ? 'active' : ''}`} onClick={() => setActiveTab(key)}>
-                        <Icon size={15} /> {label}
+            {isDrilled ? (
+                <div className="rp-drill-bar">
+                    <button className="rp-back-btn" onClick={() => setDetailSection(null)}>
+                        <ChevronLeft size={16} /> Back
                     </button>
-                ))}
-            </div>
+                    <div className="rp-breadcrumb">
+                        Monthly Report <span className="rp-crumb-sep">›</span> {sectionLabels[detailSection] || detailSection}
+                    </div>
+                </div>
+            ) : (
+                <div className="rp-tab-bar">
+                    {[['daily', Calendar, 'Daily Report'], ['monthly', FileText, 'Monthly Report']].map(([key, Icon, label]) => (
+                        <button key={key} className={`rp-tab ${activeTab === key ? 'active' : ''}`} onClick={() => switchTab(key)}>
+                            <Icon size={15} /> {label}
+                        </button>
+                    ))}
+                </div>
+            )}
 
             <div className="report-content">
                 {activeTab === 'daily' && <DailyReport />}
-                {activeTab === 'monthly' && <MonthlyReport />}
+                {activeTab === 'monthly' && <MonthlyReport detailSection={detailSection} setDetailSection={setDetailSection} />}
             </div>
 
             <style>{`
                 /* ── Page shell ── */
                 .reports-page { padding: 28px 32px; }
                 @media (max-width: 700px) { .reports-page { padding: 14px 12px; } }
+
+                /* ── Hero ── */
+                .rp-hero {
+                    position: relative;
+                    display: flex; align-items: center; gap: 16px;
+                    padding: 22px 24px; margin-bottom: 22px;
+                    background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(168,85,247,0.06) 60%, rgba(6,182,212,0.05));
+                    border: 1px solid var(--border);
+                    border-radius: 18px;
+                    overflow: hidden;
+                }
+                .rp-hero::before {
+                    content: '';
+                    position: absolute; inset: 0;
+                    background: radial-gradient(circle at top right, rgba(168,85,247,0.18), transparent 60%);
+                    pointer-events: none;
+                }
+                .rp-hero-icon {
+                    width: 52px; height: 52px; border-radius: 14px;
+                    display: flex; align-items: center; justify-content: center;
+                    background: linear-gradient(135deg, #6366f1, #a855f7);
+                    color: white; flex-shrink: 0;
+                    box-shadow: 0 8px 24px rgba(99,102,241,0.35);
+                    z-index: 1;
+                }
+                .rp-hero-text { z-index: 1; }
+                .rp-hero-title {
+                    font-size: 1.7rem; font-weight: 800; margin: 0;
+                    background: linear-gradient(to right, #fff, #94a3b8);
+                    -webkit-background-clip: text; background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                }
+                .rp-hero-sub {
+                    margin: 4px 0 0; font-size: 0.85rem;
+                    color: var(--text-secondary);
+                }
+                @media (max-width: 600px) {
+                    .rp-hero { padding: 16px 16px; gap: 12px; margin-bottom: 16px; border-radius: 14px; }
+                    .rp-hero-icon { width: 42px; height: 42px; border-radius: 11px; }
+                    .rp-hero-title { font-size: 1.25rem; }
+                    .rp-hero-sub { font-size: 0.78rem; }
+                }
 
                 /* ── Tab bar ── */
                 .rp-tab-bar {
@@ -1179,6 +1247,24 @@ const Reports = () => {
                 }
                 .rp-tab:hover { color: var(--text-primary); background: rgba(255,255,255,0.05); }
                 .rp-tab.active { background: var(--accent-gradient, linear-gradient(135deg,#6366f1,#a855f7)); color: white; box-shadow: 0 4px 12px rgba(99,102,241,0.35); }
+
+                /* ── Drill-down breadcrumb bar ── */
+                .rp-drill-bar {
+                    display: flex; align-items: center; gap: 14px;
+                    margin-bottom: 24px; flex-wrap: wrap;
+                }
+                .rp-back-btn {
+                    display: inline-flex; align-items: center; gap: 4px;
+                    padding: 6px 12px 6px 8px; border-radius: 9px;
+                    background: transparent; border: none;
+                    color: var(--text-secondary); font-size: 0.85rem; font-weight: 600;
+                    cursor: pointer; transition: all 0.18s; font-family: inherit;
+                }
+                .rp-back-btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.05); }
+                .rp-breadcrumb {
+                    font-size: 0.8rem; color: var(--text-secondary); font-weight: 500;
+                }
+                .rp-crumb-sep { margin: 0 6px; opacity: 0.6; }
 
                 /* ── Controls bar ── */
                 .rp-controls-bar {
@@ -1219,7 +1305,8 @@ const Reports = () => {
                     padding: 16px 18px; display: flex; align-items: center; gap: 14px;
                     transition: border-color 0.2s;
                 }
-                .daily-stat-card:hover { border-color: var(--border-bright); }
+                .daily-stat-card { transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s; }
+                .daily-stat-card:hover { border-color: var(--border-bright); transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.18); }
                 .daily-stat-icon {
                     width: 42px; height: 42px; border-radius: 11px;
                     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
@@ -1336,7 +1423,23 @@ const Reports = () => {
                     border-left: 4px solid transparent; border-radius: 14px; overflow: hidden;
                     transition: border-color 0.18s;
                 }
-                .section-card:hover { border-color: var(--border-bright); }
+                .section-card { transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s; }
+                .section-card:hover { border-color: var(--border-bright); transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.18); }
+                .daily-chart-card, .chart-card { transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s; }
+                .daily-chart-card:hover, .chart-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.18); }
+                .mr-worker-card { transition: transform 0.2s, box-shadow 0.2s; }
+                .mr-worker-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.18); }
+                /* Sticky table header */
+                .mr-worker-table thead th {
+                    position: sticky; top: 0; z-index: 1;
+                    backdrop-filter: blur(6px);
+                }
+                /* Mobile: scroll tables horizontally inside their card */
+                @media (max-width: 720px) {
+                    .mr-worker-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+                    .mr-worker-table { min-width: 560px; }
+                    .worker-coll-table { overflow-x: auto; }
+                }
                 .section-card-header {
                     width: 100%; background: none; border: none; color: var(--text-primary);
                     padding: 15px 20px; display: flex; align-items: center; justify-content: space-between;

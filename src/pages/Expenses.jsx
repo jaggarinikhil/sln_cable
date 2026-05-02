@@ -493,7 +493,7 @@ const Expenses = () => {
             <style>{`
                 .expenses-page { padding: 24px; max-width: 1000px; margin: 0 auto; }
                 .ep-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; }
-                .ep-title { font-size: 1.8rem; font-weight: 800; background: linear-gradient(to right, #fff, #94a3b8); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+                .ep-title { font-size: 1.8rem; font-weight: 800; background: linear-gradient(to right, var(--text-primary), #94a3b8); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
                 .ep-sub { color: var(--text-secondary); font-size: 0.9rem; margin-top: 4px; }
                 .ep-add-btn { display: flex; align-items: center; gap: 8px; background: var(--accent-gradient); border: none; padding: 10px 18px; border-radius: 12px; color: white; font-weight: 700; cursor: pointer; transition: all 0.2s; }
                 .ep-add-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(99,102,241,0.4); }
@@ -501,17 +501,17 @@ const Expenses = () => {
                 .ep-stats { display: flex; gap: 16px; margin-bottom: 24px; }
                 .ep-stat-card { flex: 1; padding: 20px; border-radius: 16px; border: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
                 .ep-stat-card.total { background: linear-gradient(135deg, rgba(99,102,241,0.1), rgba(99,102,241,0.02)); border-color: rgba(99,102,241,0.2); }
-                .ep-stat-card.filtered { background: rgba(255,255,255,0.03); }
+                .ep-stat-card.filtered { background: var(--bg-subtle, var(--bg-card-light)); }
                 .ep-stat-lbl { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; color: var(--text-secondary); }
                 .ep-stat-val { font-size: 1.6rem; font-weight: 800; }
                 .ep-stat-card.total .ep-stat-val { color: var(--accent); }
 
                 .ep-filters { display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; background: var(--bg-card); padding: 16px; border-radius: 16px; border: 1px solid var(--border); }
                 .ep-toolbar-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-                .ep-search-box { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.2); padding: 9px 14px; border-radius: 10px; border: 1px solid var(--border); flex: 1; min-width: 180px; }
+                .ep-search-box { display: flex; align-items: center; gap: 10px; background: var(--bg-input, var(--bg-card-light)); padding: 9px 14px; border-radius: 10px; border: 1px solid var(--border); flex: 1; min-width: 180px; }
 
                 .ep-dropdown {
-                    background: rgba(255,255,255,0.03);
+                    background: var(--bg-subtle, var(--bg-card-light));
                     border: 1px solid var(--border);
                     color: var(--text-secondary);
                     border-radius: 10px;
@@ -545,7 +545,7 @@ const Expenses = () => {
                     padding: 9px 12px;
                     border-radius: 10px;
                     border: 1px solid var(--border);
-                    background: rgba(255,255,255,0.03);
+                    background: var(--bg-subtle, var(--bg-card-light));
                     color: var(--text-secondary);
                     cursor: pointer;
                     transition: all 0.2s ease;
@@ -591,19 +591,19 @@ const Expenses = () => {
                 .ep-search-box input { flex: 1; background: transparent; border: none; outline: none; color: var(--text-primary); font-size: 0.95rem; }
                 
                 .ep-categories { display: flex; flex-wrap: wrap; gap: 8px; }
-                .ep-cat-btn { padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; border: 1px solid var(--border); background: rgba(255,255,255,0.05); color: var(--text-secondary); cursor: pointer; transition: all 0.2s; }
-                .ep-cat-btn:hover { background: rgba(255,255,255,0.1); }
+                .ep-cat-btn { padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; border: 1px solid var(--border); background: var(--bg-subtle, var(--bg-card-light)); color: var(--text-secondary); cursor: pointer; transition: all 0.2s; }
+                .ep-cat-btn:hover { background: var(--bg-input-hover, var(--bg-card-light)); }
                 
                 .ep-list { display: flex; flex-direction: column; gap: 12px; }
                 .ep-empty { text-align: center; padding: 40px; color: var(--text-secondary); font-size: 0.95rem; background: var(--bg-card); border-radius: 16px; border: 1px dashed var(--border); }
                 
                 .ep-card { display: flex; align-items: center; gap: 16px; background: var(--bg-card); padding: 16px; border-radius: 16px; border: 1px solid var(--border); transition: all 0.2s; }
-                .ep-card:hover { border-color: rgba(255,255,255,0.2); }
+                .ep-card:hover { border-color: var(--border-bright); }
                 .ep-card-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
                 .ep-card-body { flex: 1; }
                 .ep-card-desc { font-weight: 600; font-size: 0.95rem; margin-bottom: 6px; }
                 .ep-card-meta { display: flex; align-items: center; gap: 10px; font-size: 0.75rem; }
-                .ep-card-cat { font-weight: 700; background: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: 6px; }
+                .ep-card-cat { font-weight: 700; background: var(--bg-subtle, var(--bg-card-light)); padding: 2px 8px; border-radius: 6px; }
                 .ep-card-date { color: var(--text-secondary); }
                 .ep-card-user { font-size: 0.7rem; color: var(--text-secondary); margin-top: 4px; font-style: italic; }
                 .ep-card-right { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
@@ -621,24 +621,24 @@ const Expenses = () => {
                 .ep-del-btn:hover { background: rgba(239,68,68,0.2); transform: scale(1.05); }
                 .ep-acct-badge { font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 6px; border: 1px solid; letter-spacing: 0.4px; }
                 .ep-card-custom { font-weight: 500; color: var(--text-secondary); font-size: 0.9rem; font-style: italic; }
-                .ep-select { background: rgba(0,0,0,0.2); border: 1px solid var(--border); padding: 12px; border-radius: 10px; color: white; font-size: 0.95rem; }
-                .form-group textarea { background: rgba(0,0,0,0.2); border: 1px solid var(--border); padding: 12px; border-radius: 10px; color: white; font-size: 0.95rem; font-family: inherit; resize: vertical; }
+                .ep-select { background: var(--bg-input, var(--bg-card-light)); border: 1px solid var(--border); padding: 12px; border-radius: 10px; color: var(--text-primary); font-size: 0.95rem; }
+                .form-group textarea { background: var(--bg-input, var(--bg-card-light)); border: 1px solid var(--border); padding: 12px; border-radius: 10px; color: var(--text-primary); font-size: 0.95rem; font-family: inherit; resize: vertical; }
                 .form-group textarea:focus { border-color: var(--accent); outline: none; }
 
                 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
                 .modal-content { background: var(--bg-card); width: 90%; max-width: 480px; max-height: 90vh; display: flex; flex-direction: column; border-radius: 20px; border: 1px solid var(--border); overflow: hidden; animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
-                .modal-header { padding: 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); }
+                .modal-header { padding: 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-subtle, var(--bg-card-light)); }
                 .modal-header h2 { font-size: 1.2rem; font-weight: 700; margin: 0; }
                 .mc-close { background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px; display: flex; transition: color 0.2s; }
-                .mc-close:hover { color: white; }
+                .mc-close:hover { color: var(--text-primary); }
                 .modal-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; flex: 1; }
                 .form-group { display: flex; flex-direction: column; gap: 8px; }
                 .form-group label { font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); }
-                .form-group input { background: rgba(0,0,0,0.2); border: 1px solid var(--border); padding: 12px; border-radius: 10px; color: white; font-size: 0.95rem; transition: border-color 0.2s; }
+                .form-group input { background: var(--bg-input, var(--bg-card-light)); border: 1px solid var(--border); padding: 12px; border-radius: 10px; color: var(--text-primary); font-size: 0.95rem; transition: border-color 0.2s; }
                 .form-group input:focus { border-color: var(--accent); outline: none; }
                 .cat-grid { display: flex; flex-wrap: wrap; gap: 10px; }
                 .cat-opt { padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; font-size: 0.85rem; font-weight: 600; text-align: center; color: var(--text-secondary); transition: all 0.2s; }
-                .cat-opt:hover { background: rgba(255,255,255,0.05); }
+                .cat-opt:hover { background: var(--bg-subtle, var(--bg-card-light)); }
 
                 @keyframes slideUp {
                     from { opacity: 0; transform: translateY(20px); }

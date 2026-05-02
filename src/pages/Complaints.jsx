@@ -4,6 +4,7 @@ import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { Search, Plus, AlertCircle, X, Clock, CheckCircle, Loader, Tv, Wifi, ChevronRight, Send, StickyNote, MessageCircle } from 'lucide-react';
 import EmptyState from '../components/EmptyState';
+import { Button, Badge } from '../components/ui';
 
 const SVC_META = {
     tv:       { label: 'TV',       bg: 'rgba(168,85,247,0.12)',  color: '#a855f7', border: 'rgba(168,85,247,0.3)'  },
@@ -60,12 +61,9 @@ const ComplaintDetailModal = ({ complaint, customer, onClose, onUpdate, user }) 
                 <div className="bm-body">
                     {/* Service + Status */}
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                        <span className="cp-svc-tag" style={{ background: sm.bg, color: sm.color, borderColor: sm.border, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                            {svc === 'tv' && <Tv size={11} />}
-                            {svc === 'internet' && <Wifi size={11} />}
-                            {svc === 'general' && <AlertCircle size={11} />}
+                        <Badge color={svc === 'general' ? undefined : sm.color} icon={svc === 'tv' ? <Tv size={11} /> : svc === 'internet' ? <Wifi size={11} /> : <AlertCircle size={11} />} size="sm">
                             {sm.label}
-                        </span>
+                        </Badge>
                         <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
                             {new Date(complaint.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                             {complaint.createdByName && ` · by ${complaint.createdByName}`}
@@ -271,9 +269,9 @@ const Complaints = () => {
             {/* Header */}
             <div className="section-header">
                 <h1>Complaints</h1>
-                <button className="btn-primary" onClick={() => openModal()}>
-                    <Plus size={16} /> New Complaint
-                </button>
+                <Button variant="primary" icon={<Plus size={14} />} onClick={() => openModal()}>
+                    New Complaint
+                </Button>
             </div>
 
             {/* Customer filter banner */}
@@ -369,12 +367,9 @@ const Complaints = () => {
                                 <div className="cp-card-left">
                                     <div className="cp-card-top">
                                         <span className="cp-customer-name">{customer?.name || c.customerName || '—'}</span>
-                                        <span className="cp-svc-tag" style={{ background: sm.bg, color: sm.color, borderColor: sm.border, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                            {svc === 'tv' && <Tv size={11} />}
-                                            {svc === 'internet' && <Wifi size={11} />}
-                                            {svc === 'general' && <AlertCircle size={11} />}
+                                        <Badge color={svc === 'general' ? undefined : sm.color} icon={svc === 'tv' ? <Tv size={11} /> : svc === 'internet' ? <Wifi size={11} /> : <AlertCircle size={11} />} size="sm">
                                             {sm.label}
-                                        </span>
+                                        </Badge>
                                         <span className="cp-status-tag" style={{ background: stm.bg, color: stm.color, borderColor: stm.border }}>
                                             <StatusIcon size={11} /> {c.status}
                                         </span>

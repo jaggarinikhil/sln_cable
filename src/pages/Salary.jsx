@@ -440,7 +440,7 @@ const FinancialSummaryCard = ({ workerData, allWorkerRecords, palette, onRecordP
                         </div>
                         <div style={{
                             height: 6, width: '100%',
-                            background: 'rgba(255,255,255,0.05)',
+                            background: 'var(--bg-subtle, var(--bg-card-light))',
                             borderRadius: 999, overflow: 'hidden',
                         }}>
                             <div style={{
@@ -942,7 +942,7 @@ const Salary = () => {
                 .sl-dialog { background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.5); animation: sl-dialog-in 0.2s ease; }
                 @keyframes sl-dialog-in { from { opacity: 0; transform: translateY(16px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
                 .sl-dialog-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 0; margin-bottom: 4px; }
-                .sl-dialog-close { background: rgba(255,255,255,0.06); border: 1px solid var(--border); border-radius: 8px; color: var(--text-secondary); font-size: 0.88rem; font-weight: 700; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-family: inherit; transition: all 0.15s; }
+                .sl-dialog-close { background: var(--bg-input-hover, var(--bg-card-light)); border: 1px solid var(--border); border-radius: 8px; color: var(--text-secondary); font-size: 0.88rem; font-weight: 700; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-family: inherit; transition: all 0.15s; }
                 .sl-dialog-close:hover { color: var(--text-primary); border-color: var(--border-bright); }
 
                 /* Worker dropdown */
@@ -961,11 +961,11 @@ const Salary = () => {
                 .sl-summary-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; row-gap: 8px; }
                 .sl-summary-worker-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
                 .sl-summary-worker-name { font-size: 1rem; font-weight: 800; color: var(--text-primary); }
-                .sl-summary-cycle-badge { font-size: 0.68rem; font-weight: 600; color: var(--text-secondary); background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 20px; padding: 3px 10px; white-space: nowrap; letter-spacing: 0.02em; }
+                .sl-summary-cycle-badge { font-size: 0.68rem; font-weight: 600; color: var(--text-secondary); background: var(--bg-subtle, var(--bg-card-light)); border: 1px solid var(--border); border-radius: 20px; padding: 3px 10px; white-space: nowrap; letter-spacing: 0.02em; }
                 .sl-summary-header-right { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
-                .sl-summary-unconfigured { display: flex; align-items: center; gap: 7px; font-size: 0.75rem; color: var(--text-secondary); opacity: 0.65; background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.1); border-radius: 10px; padding: 8px 12px; margin-bottom: 14px; }
+                .sl-summary-unconfigured { display: flex; align-items: center; gap: 7px; font-size: 0.75rem; color: var(--text-secondary); opacity: 0.65; background: var(--bg-subtle, var(--bg-card-light)); border: 1px dashed var(--border); border-radius: 10px; padding: 8px 12px; margin-bottom: 14px; }
                 .sl-summary-grid { display: flex; flex-wrap: wrap; gap: 10px; }
-                .sl-summary-item { flex: 1 1 150px; display: flex; align-items: center; gap: 11px; padding: 12px 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; transition: border-color 0.15s; }
+                .sl-summary-item { flex: 1 1 150px; display: flex; align-items: center; gap: 11px; padding: 12px 14px; background: var(--bg-subtle, var(--bg-card-light)); border: 1px solid var(--border); border-radius: 14px; transition: border-color 0.15s; }
                 .sl-summary-item-prominent { flex: 1 1 170px; border-width: 1.5px; }
                 .sl-summary-item-icon { width: 32px; height: 32px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
                 .sl-summary-item-val { font-size: 0.95rem; font-weight: 800; line-height: 1.2; }
@@ -990,10 +990,10 @@ const Salary = () => {
                 .sl-team-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; min-width: 520px; }
                 .sl-team-table thead tr { border-bottom: 1px solid var(--border); }
                 .sl-team-table th { padding: 8px 12px; text-align: left; font-size: 0.63rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary); white-space: nowrap; }
-                .sl-team-table td { padding: 12px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; color: var(--text-primary); white-space: nowrap; }
+                .sl-team-table td { padding: 12px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; color: var(--text-primary); white-space: nowrap; }
                 .sl-team-table tbody tr:last-child td { border-bottom: none; }
                 .sl-team-row { cursor: pointer; transition: background 0.15s; border-left: 3px solid transparent; }
-                .sl-team-row:hover td { background: rgba(255,255,255,0.03); }
+                .sl-team-row:hover td { background: var(--bg-row-hover, var(--bg-card-light)); }
                 .sl-team-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 8px; vertical-align: middle; flex-shrink: 0; }
                 .sl-team-badge { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; border: 1px solid; }
                 .sl-team-badge-red { background: rgba(239,68,68,0.1); color: #f87171; border-color: rgba(239,68,68,0.3); }
@@ -1035,7 +1035,7 @@ const Salary = () => {
 
                 /* Month entries */
                 .sl-month-entries { border-top: 1px solid var(--border); display: flex; flex-direction: column; }
-                .sl-entry { display: flex; align-items: flex-start; gap: 12px; padding: 12px 18px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+                .sl-entry { display: flex; align-items: flex-start; gap: 12px; padding: 12px 18px; border-bottom: 1px solid var(--border); }
                 .sl-entry:last-child { border-bottom: none; }
                 .sl-entry-advance { background: rgba(245,158,11,0.03); }
                 .sl-entry-icon { width: 32px; height: 32px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
@@ -1058,7 +1058,7 @@ const Salary = () => {
                 .sl-type-btn.active { font-weight: 700; }
                 .sl-field { display: flex; flex-direction: column; gap: 6px; }
                 .sl-field label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary); display: flex; align-items: center; gap: 5px; }
-                .sl-input { background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px; color: var(--text-primary); font-size: 0.9rem; outline: none; transition: border-color 0.2s; font-family: inherit; width: 100%; box-sizing: border-box; }
+                .sl-input { background: var(--bg-input, var(--bg-card-light)); border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px; color: var(--text-primary); font-size: 0.9rem; outline: none; transition: border-color 0.2s; font-family: inherit; width: 100%; box-sizing: border-box; }
                 .sl-input:focus { border-color: var(--accent); }
                 .sl-total-preview { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border: 1px solid; border-radius: 10px; font-size: 0.85rem; font-weight: 600; }
                 .sl-save-btn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 13px; border: none; color: white; border-radius: 14px; font-size: 0.9rem; font-weight: 700; cursor: pointer; font-family: inherit; transition: all 0.2s; }
@@ -1102,9 +1102,9 @@ const Salary = () => {
                 }
 
                 .sl-form-actions { display: flex; gap: 10px; align-items: center; }
-                .sl-cancel-btn { background: rgba(255,255,255,0.06); border: 1px solid var(--border); border-radius: 12px; color: var(--text-secondary); padding: 12px 18px; font-size: 0.85rem; font-weight: 700; cursor: pointer; font-family: inherit; transition: all 0.2s; }
+                .sl-cancel-btn { background: var(--bg-input-hover, var(--bg-card-light)); border: 1px solid var(--border); border-radius: 12px; color: var(--text-secondary); padding: 12px 18px; font-size: 0.85rem; font-weight: 700; cursor: pointer; font-family: inherit; transition: all 0.2s; }
                 .sl-cancel-btn:hover { color: var(--text-primary); border-color: var(--border-bright); }
-                .sl-entry-edit-wrap { padding: 8px; background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.05); }
+                .sl-entry-edit-wrap { padding: 8px; background: var(--bg-subtle, var(--bg-card-light)); border-bottom: 1px solid var(--border); }
                 .sl-entry-edit-btn { background: none; border: none; color: var(--accent); font-size: 0.68rem; font-weight: 700; cursor: pointer; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(99,102,241,0.3); transition: all 0.2s; }
                 .sl-entry-edit-btn:hover { background: rgba(99,102,241,0.1); border-color: var(--accent); }
                 .sl-entry-delete-btn { background: none; border: 1px solid rgba(239,68,68,0.3); color: #ef4444; font-size: 0.68rem; font-weight: 700; cursor: pointer; padding: 2px 6px; border-radius: 4px; transition: all 0.2s; }

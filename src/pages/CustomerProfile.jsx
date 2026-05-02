@@ -323,13 +323,13 @@ const CustomerProfile = () => {
                     pointer-events: none;
                 }
                 .cp-back {
-                    background: rgba(255,255,255,0.06); border: 1px solid var(--border);
+                    background: var(--bg-input-hover, var(--bg-card-light)); border: 1px solid var(--border);
                     border-radius: 12px; width: 38px; height: 38px; flex-shrink: 0;
                     display: flex; align-items: center; justify-content: center;
                     cursor: pointer; color: var(--text-secondary); transition: all 0.2s;
                     z-index: 1;
                 }
-                .cp-back:hover { color: var(--text-primary); background: rgba(255,255,255,0.1); }
+                .cp-back:hover { color: var(--text-primary); background: var(--bg-input-hover, var(--bg-card-light)); }
                 .cp-hero-main { display: flex; align-items: center; gap: 18px; flex: 1; min-width: 0; z-index: 1; }
                 .cp-avatar {
                     width: 76px; height: 76px; border-radius: 50%; flex-shrink: 0;
@@ -337,7 +337,7 @@ const CustomerProfile = () => {
                     color: white; font-weight: 800; font-size: 1.7rem;
                     display: flex; align-items: center; justify-content: center;
                     box-shadow: 0 8px 24px rgba(99,102,241,0.4);
-                    border: 3px solid rgba(255,255,255,0.1);
+                    border: 3px solid var(--border);
                 }
                 .cp-hero-info { flex: 1; min-width: 0; }
                 .cp-name { font-size: 1.6rem; font-weight: 800; margin: 0 0 8px; color: var(--text-primary); line-height: 1.15; }
@@ -353,8 +353,8 @@ const CustomerProfile = () => {
                     font-weight: 700; cursor: pointer; white-space: nowrap;
                     transition: all 0.2s; font-family: inherit; border: 1px solid transparent;
                 }
-                .cp-btn-ghost { background: rgba(255,255,255,0.06); color: var(--text-secondary); border-color: var(--border); }
-                .cp-btn-ghost:hover { color: var(--text-primary); background: rgba(255,255,255,0.1); }
+                .cp-btn-ghost { background: var(--bg-input-hover, var(--bg-card-light)); color: var(--text-secondary); border-color: var(--border); }
+                .cp-btn-ghost:hover { color: var(--text-primary); background: var(--bg-input-hover, var(--bg-card-light)); }
                 .cp-btn-primary { background: linear-gradient(135deg, #6366f1, #a855f7); color: white; box-shadow: 0 4px 14px rgba(99,102,241,0.35); }
                 .cp-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(99,102,241,0.45); }
                 .cp-btn-pay { background: rgba(16,185,129,0.14); color: #10b981; border-color: rgba(16,185,129,0.35); }
@@ -405,7 +405,7 @@ const CustomerProfile = () => {
                 .cp-plan-net .cp-plan-sub { color: #22d3ee; }
                 .cp-annual { margin-left: auto; font-size: 0.7rem; font-weight: 700; padding: 4px 10px; border-radius: 20px; background: rgba(168,85,247,0.15); color: #c084fc; border: 1px solid rgba(168,85,247,0.3); }
                 .cp-plan-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-                .cp-plan-item { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; }
+                .cp-plan-item { background: var(--bg-subtle, var(--bg-card-light)); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; }
                 .cp-plan-l { display: block; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-bottom: 4px; }
                 .cp-plan-v { font-size: 0.92rem; font-weight: 700; color: var(--text-primary); }
 
@@ -422,7 +422,7 @@ const CustomerProfile = () => {
                 }
                 .cp-tab:hover { color: var(--text-primary); }
                 .cp-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-                .cp-tab-count { font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; background: rgba(255,255,255,0.06); color: var(--text-secondary); }
+                .cp-tab-count { font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; background: var(--bg-input-hover, var(--bg-card-light)); color: var(--text-secondary); }
                 .cp-tab.active .cp-tab-count { background: rgba(99,102,241,0.18); color: var(--accent); }
                 .cp-tab-body { padding: 18px 20px; }
 
@@ -432,11 +432,11 @@ const CustomerProfile = () => {
 
                 .cp-bill, .cp-complaint, .cp-pay {
                     display: flex; align-items: center; gap: 12px;
-                    padding: 12px 14px; background: rgba(255,255,255,0.02);
+                    padding: 12px 14px; background: var(--bg-subtle, var(--bg-card-light));
                     border: 1px solid var(--border); border-radius: 14px;
                     transition: background 0.15s;
                 }
-                .cp-bill:hover, .cp-complaint:hover, .cp-pay:hover { background: rgba(255,255,255,0.04); }
+                .cp-bill:hover, .cp-complaint:hover, .cp-pay:hover { background: var(--bg-row-hover, var(--bg-card-light)); }
                 .cp-bill-left { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
                 .cp-bill-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
                 .cp-bill-dot.paid { background: #10b981; box-shadow: 0 0 0 3px rgba(16,185,129,0.15); }

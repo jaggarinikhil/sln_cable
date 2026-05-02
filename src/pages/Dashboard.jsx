@@ -488,7 +488,7 @@ const OwnerDashboard = ({ user, customers, bills, complaints, navigate }) => {
                                 ))}
                             </Pie>
                             <Tooltip
-                                contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '10px', fontSize: '13px' }}
+                                contentStyle={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', fontSize: '13px', color: 'var(--text-primary)' }}
                             />
                             <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
                         </PieChart>
@@ -499,13 +499,13 @@ const OwnerDashboard = ({ user, customers, bills, complaints, navigate }) => {
                     <h3>Revenue Trend — TV vs Internet</h3>
                     <ResponsiveContainer width="100%" height={280}>
                         <BarChart data={revenueData} barGap={4}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                             <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
                             <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v}`} />
                             <Tooltip
                                 contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '10px' }}
                                 itemStyle={{ fontSize: '12px' }}
-                                cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+                                cursor={{ fill: 'var(--bg-row-hover, var(--bg-card-light))' }}
                             />
                             <Legend iconType="circle" wrapperStyle={{ paddingTop: '16px', fontSize: '12px' }} />
                             <Bar dataKey="tv" name="Cable TV" fill="#3b82f6" radius={[5, 5, 0, 0]} maxBarSize={32} />
@@ -834,10 +834,10 @@ const DashboardStyles = () => (
 .payment-badge-cash { background: rgba(16,185,129,0.1); color: #10b981; border-color: rgba(16,185,129,0.3); }
 .payment-badge-phonepe { background: rgba(99,102,241,0.1); color: #6366f1; border-color: rgba(99,102,241,0.3); }
 .payment-badge-gpay { background: rgba(6,182,212,0.1); color: #06b6d4; border-color: rgba(6,182,212,0.3); }
-.payment-badge-default { background: rgba(255,255,255,0.08); color: var(--text-secondary); border-color: var(--border); }
+.payment-badge-default { background: var(--bg-input-hover, var(--bg-card-light)); color: var(--text-secondary); border-color: var(--border); }
 
 .payment-row-clickable { cursor: pointer; transition: background 0.15s; }
-.payment-row-clickable:hover { background: rgba(255,255,255,0.04); }
+.payment-row-clickable:hover { background: var(--bg-row-hover, var(--bg-card-light)); }
 
 /* ── Page wrapper ── */
 .dashboard-page { padding: 28px 32px; }
