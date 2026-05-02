@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { X, Save, User, Phone, MapPin, Tv, Wifi, Box, FileText, CheckCircle } from 'lucide-react';
+import { useToast } from './Toast';
 
 const CustomerModal = ({ customer: editingCustomer, initialName, onClose, onSave }) => {
+    const { success, error, info } = useToast();
     const SPEEDS = [10, 20, 30, 40, 50, 60, 70, 75, 100, 150, 200];
     const VALIDITIES = [
         { value: '1month', label: '1 Month' },
@@ -32,6 +34,7 @@ const CustomerModal = ({ customer: editingCustomer, initialName, onClose, onSave
             name: initialName || '',
             phone: '',
             address: '',
+            zone: '',
             boxNumber: '',
             services: {
                 tv: { active: false, monthlyRate: 300, installationFee: 0, annualSubscription: false },
@@ -55,7 +58,7 @@ const CustomerModal = ({ customer: editingCustomer, initialName, onClose, onSave
     const handleSubmit = (e) => {
         e.preventDefault();
         if (!hasTv && !hasNet) {
-            alert('Please select at least one service');
+            error('Please select at least one service');
             return;
         }
         // Default bill choice based on active services
@@ -176,6 +179,25 @@ const CustomerModal = ({ customer: editingCustomer, initialName, onClose, onSave
                                 required
                                 rows={3}
                             />
+                        </div>
+                    </div>
+
+                    {/* Zone */}
+                    <div className="cm-field">
+                        <label className="cm-label">Zone (optional)</label>
+                        <div className="cm-input-wrap">
+                            <MapPin size={16} className="cm-input-icon" />
+                            <select
+                                className="cm-input"
+                                value={formData.zone || ''}
+                                onChange={e => setFormData({ ...formData, zone: e.target.value })}
+                            >
+                                <option value="">— Select zone —</option>
+                                <option value="zone1_sln">Zone 1 — SLN</option>
+                                <option value="zone2_raju">Zone 2 — Raju</option>
+                                <option value="zone3_channareddy">Zone 3 — Channareddy</option>
+                                <option value="zone4_ravisetu">Zone 4 — Ravisetu</option>
+                            </select>
                         </div>
                     </div>
 
@@ -706,17 +728,46 @@ const CustomerModal = ({ customer: editingCustomer, initialName, onClose, onSave
                 .cm-bill-svc-active-both .cm-service-check.checked { background: #10b981; border-color: #10b981; color: white; }
 
                 @media (max-width: 768px) {
-                    .modal-overlay { padding: 0; align-items: flex-end; }
+                    .modal-overlay { padding: 0; align-items: stretch; justify-content: stretch; }
                     .cm-sheet {
-                        border-radius: 24px 24px 0 0;
+                        border-radius: 0;
                         max-width: 100%;
-                        max-height: 95vh;
+                        width: 100%;
+                        height: 100dvh;
+                        max-height: 100dvh;
+                        display: flex;
+                        flex-direction: column;
                     }
+                    .cm-header {
+                        padding: 14px 16px;
+                        flex-shrink: 0;
+                        position: sticky;
+                        top: 0;
+                        z-index: 10;
+                    }
+                    .cm-header h2 { font-size: 1.05rem !important; }
+                    .cm-body {
+                        padding: 14px 16px;
+                        flex: 1;
+                        overflow-y: auto;
+                        -webkit-overflow-scrolling: touch;
+                        gap: 12px;
+                    }
+                    .cm-field { gap: 5px; }
+                    .cm-label { font-size: 0.72rem; }
+                    .cm-input { padding: 11px 12px 11px 38px; font-size: 16px; border-radius: 10px; }
+                    .cm-textarea { padding: 13px 12px 13px 38px; }
+                    .cm-service-row { grid-template-columns: 1fr 1fr; gap: 8px; }
+                    .cm-service-btn { padding: 12px 8px; font-size: 0.85rem; }
+                    .cm-btn-primary { padding: 12px; font-size: 0.95rem; }
+
                     @keyframes cmSlideUp {
-                        from { opacity: 0; transform: translateY(100%); }
+                        from { opacity: 0; transform: translateY(20px); }
                         to { opacity: 1; transform: translateY(0); }
                     }
-                    .cm-service-row { grid-template-columns: 1fr 1fr; }
+                }
+                @media (max-width: 380px) {
+                    .cm-service-row { grid-template-columns: 1fr; }
                 }
             `}</style>
         </div>

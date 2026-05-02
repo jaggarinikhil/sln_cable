@@ -1,9 +1,11 @@
-:root {
+:root,
+:root[data-theme="dark"] {
     --sidebar-width: 64px;
     --sidebar-expanded: 240px;
     --bg-dark: #070a13;
     --bg-body: #0c111d;
     --bg-card: rgba(23, 29, 45, 0.7);
+    --bg-card-light: rgba(35, 42, 62, 0.6);
     --border: rgba(255, 255, 255, 0.08);
     --border-bright: rgba(255, 255, 255, 0.15);
     --text-primary: #ffffff;
@@ -14,6 +16,47 @@
     --warning: #f59e0b;
     --danger: #ef4444;
     --glass: blur(12px) saturate(180%);
+    --bg-nav: rgba(7, 10, 19, 0.85);
+    --bg-input: rgba(255, 255, 255, 0.05);
+    --bg-input-hover: rgba(255, 255, 255, 0.1);
+    --bg-subtle: rgba(255, 255, 255, 0.03);
+    --bg-row-hover: rgba(255, 255, 255, 0.02);
+    --bg-modal: #0f172a;
+    --shadow-card: rgba(0, 0, 0, 0.5);
+    --shadow-modal: rgba(0, 0, 0, 0.8);
+    --overlay: rgba(0, 0, 0, 0.7);
+    --overlay-light: rgba(0, 0, 0, 0.65);
+    --heading-gradient: linear-gradient(to right, #fff, #94a3b8);
+}
+
+:root[data-theme="light"] {
+    --sidebar-width: 64px;
+    --sidebar-expanded: 240px;
+    --bg-dark: #f8fafc;
+    --bg-body: #f8fafc;
+    --bg-card: #ffffff;
+    --bg-card-light: #f1f5f9;
+    --border: #e2e8f0;
+    --border-bright: #cbd5e1;
+    --text-primary: #0f172a;
+    --text-secondary: #64748b;
+    --accent: #6366f1;
+    --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --glass: blur(8px) saturate(140%);
+    --bg-nav: rgba(255, 255, 255, 0.85);
+    --bg-input: #ffffff;
+    --bg-input-hover: #f1f5f9;
+    --bg-subtle: #f8fafc;
+    --bg-row-hover: #f8fafc;
+    --bg-modal: #ffffff;
+    --shadow-card: rgba(15, 23, 42, 0.08);
+    --shadow-modal: rgba(15, 23, 42, 0.18);
+    --overlay: rgba(15, 23, 42, 0.45);
+    --overlay-light: rgba(15, 23, 42, 0.35);
+    --heading-gradient: linear-gradient(to right, #0f172a, #64748b);
 }
 
 .text-due {
@@ -60,7 +103,7 @@ body {
     gap: 0;
     height: 56px;
     padding: 0 20px;
-    background: rgba(7, 10, 19, 0.85);
+    background: var(--bg-nav);
     backdrop-filter: var(--glass);
     border-bottom: 1px solid var(--border);
     min-width: 0;
@@ -142,8 +185,8 @@ body {
 }
 
 .topnav-link:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.1);
+    background: var(--bg-card-light);
+    border-color: var(--border-bright);
     color: var(--text-primary);
 }
 
@@ -227,14 +270,14 @@ body {
 }
 
 .topnav-hamburger:hover {
-    background: rgba(255, 255, 255, 0.07);
+    background: var(--bg-card-light);
 }
 
 /* Mobile drawer */
 .topnav-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.65);
+    background: var(--overlay-light);
     z-index: 200;
     backdrop-filter: blur(3px);
 }
@@ -303,8 +346,8 @@ body {
 }
 
 .topnav-drawer-link:hover {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.08);
+    background: var(--bg-card-light);
+    border-color: var(--border);
     color: var(--text-primary);
 }
 
@@ -382,7 +425,7 @@ body {
 
 .card:hover {
     border-color: var(--border-bright);
-    box-shadow: 0 20px 40px -20px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 20px 40px -20px var(--shadow-card);
 }
 
 /* Buttons */
@@ -407,7 +450,7 @@ body {
 }
 
 .btn-secondary {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--bg-input);
     color: var(--text-primary);
     border: 1px solid var(--border);
     padding: 12px 24px;
@@ -418,7 +461,7 @@ body {
 }
 
 .btn-secondary:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--bg-input-hover);
     border-color: var(--border-bright);
 }
 
@@ -438,7 +481,7 @@ body {
 }
 
 .data-table th {
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--bg-subtle);
     padding: 12px 14px;
     font-size: 0.75rem;
     font-weight: 700;
@@ -456,14 +499,14 @@ body {
 }
 
 .data-table tr:hover td {
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--bg-row-hover);
 }
 
 /* Modal Overlay */
 .modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.7);
+    background: var(--overlay);
     backdrop-filter: blur(4px);
     z-index: 300;
     display: flex;
@@ -485,10 +528,10 @@ body {
 
 /* Modal */
 .modal-content {
-    background: #0f172a;
+    background: var(--bg-modal);
     border: 1px solid var(--border-bright);
     border-radius: 24px;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+    box-shadow: 0 25px 50px -12px var(--shadow-modal);
     animation: modalSlide 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -524,7 +567,7 @@ body {
 .form-group select,
 .form-group textarea {
     width: 100%;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--bg-input);
     border: 1px solid var(--border);
     border-radius: 10px;
     padding: 11px 14px;
@@ -541,7 +584,7 @@ body {
 }
 
 .form-group select option {
-    background: #0f172a;
+    background: var(--bg-modal);
     color: var(--text-primary);
 }
 
@@ -685,7 +728,7 @@ body {
 .section-header h1 {
     font-size: 1.8rem;
     font-weight: 800;
-    background: linear-gradient(to right, #fff, #94a3b8);
+    background: var(--heading-gradient);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -771,5 +814,85 @@ body {
 @keyframes spin {
     to {
         transform: rotate(360deg);
+    }
+}
+/* ── Dashboard widget header with "View all" button ── */
+.dashboard-page .recent-activity-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+.dashboard-page .recent-activity-head h3 {
+    margin: 0;
+}
+.dashboard-page .view-all-btn {
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    color: var(--accent);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+.dashboard-page .view-all-btn:hover {
+    background: rgba(99, 102, 241, 0.2);
+    transform: translateX(2px);
+}
+
+/* ── Dashboard widgets: keep tables aligned and scroll inside the widget on mobile ── */
+.dashboard-page .recent-activity .data-table th,
+.dashboard-page .recent-activity .data-table td {
+    text-align: left;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+    /* Force tables to keep their natural column widths (no compression) */
+    .dashboard-page .recent-activity .data-table {
+        min-width: 640px;
+        table-layout: auto;
+    }
+
+    .dashboard-page .recent-activity {
+        max-height: 440px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+    .dashboard-page .recent-activity .table-container {
+        max-height: 360px;
+        overflow-y: auto;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        flex: 1;
+    }
+    .dashboard-page .chart-card {
+        max-height: 420px;
+        overflow: hidden;
+    }
+    .dashboard-page .recent-activity table {
+        font-size: 0.8rem;
+    }
+    /* Sticky header (vertical only) so column titles stay visible while scrolling rows */
+    .dashboard-page .recent-activity .table-container thead th {
+        position: sticky;
+        top: 0;
+        background: var(--bg-card);
+        z-index: 1;
+    }
+    /* Slim scrollbar for the inner widget scroll */
+    .dashboard-page .recent-activity ::-webkit-scrollbar {
+        width: 4px;
+        height: 4px;
+    }
+    .dashboard-page .recent-activity ::-webkit-scrollbar-thumb {
+        background: rgba(99, 102, 241, 0.4);
+        border-radius: 2px;
     }
 }

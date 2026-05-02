@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
-import { Search, Plus, AlertCircle, X, Clock, CheckCircle, Loader, Tv, Wifi, ChevronRight, Send, StickyNote } from 'lucide-react';
+import { Search, Plus, AlertCircle, X, Clock, CheckCircle, Loader, Tv, Wifi, ChevronRight, Send, StickyNote, MessageCircle } from 'lucide-react';
+import EmptyState from '../components/EmptyState';
 
 const SVC_META = {
     tv:       { label: 'TV',       bg: 'rgba(168,85,247,0.12)',  color: '#a855f7', border: 'rgba(168,85,247,0.3)'  },
@@ -46,15 +47,25 @@ const ComplaintDetailModal = ({ complaint, customer, onClose, onUpdate, user }) 
                 <div className="bm-header">
                     <div className="bm-header-icon" style={{ background: stm.bg, color: stm.color }}><AlertCircle size={20} /></div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                        <div className="bm-header-title">{customer?.name || '—'}</div>
-                        <div className="bm-header-sub">{customer?.phone}{customer?.boxNumber ? ` · Box ${customer.boxNumber}` : ''}</div>
+                        <div className="bm-header-title">
+                            {customer?.name || complaint.customerName || 'Customer'}
+                        </div>
+                        <div className="bm-header-sub">
+                            {(customer?.phone || complaint.phone) || ''}
+                            {(customer?.boxNumber || complaint.boxNumber) ? ` · Box ${customer?.boxNumber || complaint.boxNumber}` : ''}
+                        </div>
                     </div>
                     <button className="bm-close" onClick={onClose}><X size={18} /></button>
                 </div>
                 <div className="bm-body">
                     {/* Service + Status */}
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                        <span className="cp-svc-tag" style={{ background: sm.bg, color: sm.color, borderColor: sm.border }}>{sm.label}</span>
+                        <span className="cp-svc-tag" style={{ background: sm.bg, color: sm.color, borderColor: sm.border, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            {svc === 'tv' && <Tv size={11} />}
+                            {svc === 'internet' && <Wifi size={11} />}
+                            {svc === 'general' && <AlertCircle size={11} />}
+                            {sm.label}
+                        </span>
                         <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
                             {new Date(complaint.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                             {complaint.createdByName && ` · by ${complaint.createdByName}`}
@@ -188,6 +199,10 @@ const Complaints = () => {
             setSelectedComplaintId(location.state.openComplaintId);
             window.history.replaceState({}, '');
         }
+        if (location.state?.statusFilter) {
+            setStatusFilter(location.state.statusFilter);
+            window.history.replaceState({}, '');
+        }
     }, [location.state]);
 
     const filtered = complaints.filter(c => {
@@ -197,7 +212,9 @@ const Complaints = () => {
             const customer = customers.find(cu => String(cu.id) === String(c.customerId));
             if (!(customer?.name || c.customerName || '').toLowerCase().includes(q) && !c.description.toLowerCase().includes(q)) return false;
         }
-        if (statusFilter !== 'All' && c.status !== statusFilter) return false;
+        if (statusFilter === 'Active') {
+            if (c.status === 'Completed') return false;
+        } else if (statusFilter !== 'All' && c.status !== statusFilter) return false;
         if (serviceFilter !== 'All' && (c.serviceType || 'general').toLowerCase() !== serviceFilter.toLowerCase()) return false;
         const cDate = localDate(c.createdAt);
         if (datePreset === 'today'  && cDate !== todayStr) return false;
@@ -333,10 +350,12 @@ const Complaints = () => {
 
             {/* Complaint cards */}
             {filtered.length === 0 ? (
-                <div className="cp-empty">
-                    <AlertCircle size={32} style={{ color: 'var(--text-secondary)', opacity: 0.4 }} />
-                    <p>No complaints match your filters.</p>
-                </div>
+                <EmptyState
+                    icon={MessageCircle}
+                    title="No complaints found"
+                    description="No complaints match your filters."
+                    accent="#f87171"
+                />
             ) : (
                 <div className="cp-list">
                     {paginatedComplaints.map(c => {
@@ -350,7 +369,12 @@ const Complaints = () => {
                                 <div className="cp-card-left">
                                     <div className="cp-card-top">
                                         <span className="cp-customer-name">{customer?.name || c.customerName || '—'}</span>
-                                        <span className="cp-svc-tag" style={{ background: sm.bg, color: sm.color, borderColor: sm.border }}>{sm.label}</span>
+                                        <span className="cp-svc-tag" style={{ background: sm.bg, color: sm.color, borderColor: sm.border, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                            {svc === 'tv' && <Tv size={11} />}
+                                            {svc === 'internet' && <Wifi size={11} />}
+                                            {svc === 'general' && <AlertCircle size={11} />}
+                                            {sm.label}
+                                        </span>
                                         <span className="cp-status-tag" style={{ background: stm.bg, color: stm.color, borderColor: stm.border }}>
                                             <StatusIcon size={11} /> {c.status}
                                         </span>
@@ -474,9 +498,14 @@ const Complaints = () => {
                                         return (
                                             <button key={val} type="button"
                                                 className={`cp-toggle-btn ${sel ? 'sel' : ''}`}
-                                                style={sel ? { borderColor: m.border, color: m.color, background: m.bg } : {}}
+                                                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, ...(sel ? { borderColor: m.border, color: m.color, background: m.bg } : {}) }}
                                                 onClick={() => setForm(f => ({ ...f, serviceType: val }))}
-                                            >{label}</button>
+                                            >
+                                                {val === 'tv' && <Tv size={12} />}
+                                                {val === 'internet' && <Wifi size={12} />}
+                                                {val === 'general' && <AlertCircle size={12} />}
+                                                {label}
+                                            </button>
                                         );
                                     })}
                                 </div>

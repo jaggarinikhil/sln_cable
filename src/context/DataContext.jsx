@@ -191,6 +191,13 @@ export const DataProvider = ({ children }) => {
         });
     };
 
+    const deleteSalary = async (id) => {
+        await updateDoc(doc(db, 'salary', id), {
+            deleted: true,
+            deletedAt: new Date().toISOString(),
+        });
+    };
+
     const addExpense = async (expense) => {
         await addDoc(collection(db, 'expenses'), {
             ...expense,
@@ -241,7 +248,7 @@ export const DataProvider = ({ children }) => {
             users, addUser, updateUser,
             handovers,
             workHours, addWorkHours, updateWorkHours,
-            salary, addSalary, updateSalary,
+            salary, addSalary, updateSalary, deleteSalary,
             expenses, addExpense, updateExpense, deleteExpense,
             personal, addPersonal, updatePersonal, deletePersonal,
             loading

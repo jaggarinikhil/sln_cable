@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Lock, User } from 'lucide-react';
+import { Lock, User, LogIn, Tv } from 'lucide-react';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -34,6 +34,7 @@ const Login = () => {
   return (
     <div className="login-container">
       <div className="login-card">
+        <div className="login-brand"><Tv size={28} /></div>
         <h1>SLN CABLE</h1>
         <p>Billing Management System</p>
 
@@ -60,7 +61,7 @@ const Login = () => {
             />
           </div>
           <button type="submit" className="login-btn" disabled={isLoggingIn}>
-            {isLoggingIn ? 'Logging in...' : 'Login'}
+            {isLoggingIn ? 'Logging in...' : (<><LogIn size={16} /> Login</>)}
           </button>
         </form>
       </div>
@@ -114,6 +115,16 @@ const Login = () => {
           cursor: pointer;
           margin-top: 12px;
           transition: background 0.2s;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+        }
+        .login-brand {
+          width: 56px; height: 56px; border-radius: 16px;
+          margin: 0 auto 16px; display: flex; align-items: center; justify-content: center;
+          background: rgba(99,102,241,0.12); color: var(--accent);
+          border: 1px solid rgba(99,102,241,0.25);
         }
         .login-btn:hover { background-color: var(--accent-hover); }
         .error-alert {

@@ -3,6 +3,7 @@ import { PERMISSIONS, OWNER_PRESET, WORKER_PRESET } from '../utils/permissions';
 import { X, Save, Shield, UserPlus, Lock, Edit2, CheckCircle, XCircle, Crown, Wrench, KeyRound } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
+import { useToast } from '../components/Toast';
 
 /* ─── Reset Password Modal ──────────────────────────────────── */
 const ResetPasswordModal = ({ user: targetUser, onClose, onSave }) => {
@@ -372,6 +373,7 @@ const UserModal = ({ user: editingUser, onClose, onSave }) => {
 const UserManagement = () => {
     const { user: currentUser } = useAuth();
     const { users, addUser, updateUser, loading, salary: rawSalarySnap } = useData();
+    const { success, error: toastError, info } = useToast();
     const [modalOpen, setModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
     const [resetPasswordUser, setResetPasswordUser] = useState(null);
@@ -434,7 +436,7 @@ const UserManagement = () => {
             setEditingUser(null);
         } catch (err) {
             console.error("Error saving user:", err);
-            alert("Failed to save user. Check database rules.");
+            toastError("Failed to save user. Check database rules.");
         }
     };
 
@@ -456,7 +458,7 @@ const UserManagement = () => {
             setResetPasswordUser(null);
         } catch (err) {
             console.error("Error resetting password:", err);
-            alert("Failed to reset password.");
+            toastError("Failed to reset password.");
         }
     };
 

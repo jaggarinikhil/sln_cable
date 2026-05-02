@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useData } from '../context/DataContext';
-import { Search, History as HistoryIcon, User } from 'lucide-react';
+import { Search, History as HistoryIcon, User, Phone, Box } from 'lucide-react';
 import CustomerHistory from '../components/CustomerHistory';
 
 const CustomerHistoryPage = () => {
@@ -55,8 +55,8 @@ const CustomerHistoryPage = () => {
                                             </div>
                                             <div className="match-info">
                                                 <p className="match-name">{c.name}</p>
-                                                <p className="match-meta">{c.phone}</p>
-                                                <p className="match-meta text-xs opacity-60">Box: {c.boxNumber || 'N/A'}</p>
+                                                <p className="match-meta" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Phone size={12} /> {c.phone}</p>
+                                                <p className="match-meta text-xs opacity-60" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Box size={12} /> {c.boxNumber || 'N/A'}</p>
                                             </div>
                                         </div>
                                     ))
@@ -73,7 +73,11 @@ const CustomerHistoryPage = () => {
                                 </div>
                                 <div className="detail-info">
                                     <h3>{selectedCustomer.name}</h3>
-                                    <p>{selectedCustomer.phone} | {selectedCustomer.boxNumber}</p>
+                                    <p style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Phone size={13} /> {selectedCustomer.phone}</span>
+                                        <span style={{ opacity: 0.4 }}>|</span>
+                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Box size={13} /> {selectedCustomer.boxNumber}</span>
+                                    </p>
                                 </div>
                             </div>
                             <button onClick={() => setSelectedCustomer(null)} className="btn-secondary">

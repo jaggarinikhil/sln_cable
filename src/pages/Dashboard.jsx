@@ -3,7 +3,7 @@ import { useData } from '../context/DataContext';
 import {
     IndianRupee, Users, AlertCircle,
     ArrowUpRight, ArrowDownRight,
-    Clock, Banknote, CheckCircle, HardHat, Receipt, Wifi, Tv2
+    Clock, Banknote, CheckCircle, HardHat, Receipt, Wifi, Tv2, Sun
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -11,6 +11,7 @@ import {
     PieChart, Pie, Cell, ResponsiveContainer,
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend
 } from 'recharts';
+import AnimatedNumber from '../components/AnimatedNumber';
 
 const StatCard = ({ title, value, subtext, icon, trend, trendValue, color, onClick }) => (
     <div
@@ -67,8 +68,13 @@ const WorkerDashboard = ({ user, navigate, bills, workHours, salary, complaints,
     // Salary data
     const mySalary = useMemo(() => {
         if (!perms.viewOwnSalary) return null;
-        const myUser = users.find(u => u.id === user.userId);
+        const myUser = users.find(u => u.id === user.userId)
+            || users.find(u => u.username === user.username)
+            || users.find(u => u.username === user.userId);
         if (!myUser) return null;
+
+        // All possible identifiers that could appear as workerId on salary records
+        const myIds = new Set([user.userId, user.username, myUser.id, myUser.username].filter(Boolean));
 
         const startDay = myUser.salaryStartDay || 1;
         const today = new Date();
@@ -78,7 +84,7 @@ const WorkerDashboard = ({ user, navigate, bills, workHours, salary, complaints,
         const cycleStartStr = curCycleStart.toLocaleDateString('en-CA');
 
         const recs = (salary || [])
-            .filter(s => s.workerId === user.userId && !s.deleted)
+            .filter(s => myIds.has(s.workerId) && !s.deleted)
             .map(r => {
                 if (r.cashAmount !== undefined || r.type === 'advance') return r;
                 const amt = parseFloat(r.amount || 0);
@@ -88,7 +94,7 @@ const WorkerDashboard = ({ user, navigate, bills, workHours, salary, complaints,
 
         const paidThisCycle = recs
             .filter(r => r.type === 'salary' && (r.paymentDate || '') >= cycleStartStr)
-            .reduce((s, r) => s + (r.cashAmount || 0) + (r.digitalAmount || 0), 0);
+            .reduce((s, r) => s + (r.cashAmount || 0) + (r.digitalAmount || 0) + (r.advanceDeduction || 0), 0);
 
         const monthlySalary = parseFloat(myUser.monthlySalary) || 0;
         const balanceDue = monthlySalary - paidThisCycle;
@@ -97,7 +103,7 @@ const WorkerDashboard = ({ user, navigate, bills, workHours, salary, complaints,
         const outstandingAdv = totalAdv - totalAdvDed;
 
         return { monthlySalary, paidThisCycle, balanceDue, outstandingAdv, curCycleStart };
-    }, [perms.viewOwnSalary, user.userId, users, salary]);
+    }, [perms.viewOwnSalary, user.userId, user.username, users, salary]);
 
     // Complaints
     const myComplaints = useMemo(() => {
@@ -119,9 +125,13 @@ const WorkerDashboard = ({ user, navigate, bills, workHours, salary, complaints,
 
     return (
         <div className="dashboard-page">
-            <div className="section-header">
-                <h1>Welcome, {user.name?.split(' ')[0]}</h1>
-            </div>
+            <DashboardHero
+                user={user}
+                role="worker"
+                quickStatLabel="Today's collection"
+                quickStatValue={fmt(todayCollected)}
+                quickStatIcon={<IndianRupee size={20} />}
+            />
 
             <div className="stats-grid" style={{ marginBottom: 28 }}>
                 {perms.logOwnHours && (
@@ -171,7 +181,7 @@ const WorkerDashboard = ({ user, navigate, bills, workHours, salary, complaints,
                         subtext="Pending resolution"
                         icon={<HardHat size={20} />}
                         color="245, 158, 11"
-                        onClick={() => navigate('/complaints')}
+                        onClick={() => navigate('/complaints', { state: { statusFilter: 'Active' } })}
                     />
                 )}
             </div>
@@ -179,7 +189,10 @@ const WorkerDashboard = ({ user, navigate, bills, workHours, salary, complaints,
             <div className="dashboard-bottom-grid" style={{ marginBottom: 24 }}>
                 {perms.viewComplaints && myComplaints.length > 0 && (
                     <div className="card recent-activity">
-                        <h3>Active Complaints</h3>
+                        <div className="recent-activity-head">
+                            <h3>Active Complaints</h3>
+                            <button className="view-all-btn" onClick={() => navigate('/complaints', { state: { statusFilter: 'Active' } })}>View all →</button>
+                        </div>
                         <div className="table-container no-border no-margin">
                             <table className="data-table">
                                 <thead>
@@ -191,7 +204,7 @@ const WorkerDashboard = ({ user, navigate, bills, workHours, salary, complaints,
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {myComplaints.slice(0, 8).map(c => (
+                                    {myComplaints.slice(0, 10).map(c => (
                                         <tr key={c.id} className="payment-row-clickable"
                                             onClick={() => navigate('/complaints', { state: { openComplaintId: c.id } })}>
                                             <td><strong>{c.customerName || '—'}</strong></td>
@@ -214,13 +227,16 @@ const WorkerDashboard = ({ user, navigate, bills, workHours, salary, complaints,
 
                 {perms.recordPayment && (
                     <div className="card recent-activity">
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                        <div className="recent-activity-head">
                             <h3 style={{ margin: 0 }}>Payments You Collected</h3>
-                            {totalCollected > 0 && (
-                                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#10b981' }}>
-                                    Total: {fmt(totalCollected)}
-                                </span>
-                            )}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                {totalCollected > 0 && (
+                                    <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#10b981' }}>
+                                        Total: {fmt(totalCollected)}
+                                    </span>
+                                )}
+                                <button className="view-all-btn" onClick={() => navigate('/payments')}>View all →</button>
+                            </div>
                         </div>
                         {myPayments.length === 0 ? (
                             <p style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', textAlign: 'center', padding: '12px 0' }}>No payments collected yet.</p>
@@ -236,7 +252,7 @@ const WorkerDashboard = ({ user, navigate, bills, workHours, salary, complaints,
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {myPayments.slice(0, 30).map((p, i) => (
+                                        {myPayments.slice(0, 10).map((p, i) => (
                                             <tr key={p.id || i} className="payment-row-clickable"
                                                 onClick={() => navigate('/payments')}
                                                 style={p.date === todayStr ? { background: 'rgba(16,185,129,0.04)' } : {}}>
@@ -265,7 +281,35 @@ const WorkerDashboard = ({ user, navigate, bills, workHours, salary, complaints,
 };
 
 /* ── Owner Dashboard ─────────────────────────────────────────── */
-const OwnerDashboard = ({ customers, bills, complaints, navigate }) => {
+const DashboardHero = ({ user, role, quickStatLabel, quickStatValue, quickStatIcon }) => {
+    const hour = new Date().getHours();
+    const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+    const firstName = user?.name?.split(' ')[0] || '';
+    const dateStr = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const tagline = role === 'owner' ? "Here's how SLN Cable is doing today" : "Let's get to work";
+    const SunIcon = hour < 12 ? Sun : hour < 17 ? Sun : Clock;
+    return (
+        <div className="dashboard-hero">
+            <div className="dashboard-hero-left">
+                <div className="dashboard-hero-greeting">
+                    <SunIcon size={22} style={{ opacity: 0.85 }} />
+                    <span>{greeting}{firstName ? `, ${firstName}` : ''}</span>
+                </div>
+                <div className="dashboard-hero-meta">{dateStr}</div>
+                <div className="dashboard-hero-tagline">{tagline}</div>
+            </div>
+            <div className="dashboard-hero-stat">
+                <div className="dashboard-hero-stat-icon">{quickStatIcon}</div>
+                <div>
+                    <div className="dashboard-hero-stat-label">{quickStatLabel}</div>
+                    <div className="dashboard-hero-stat-value">{quickStatValue}</div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const OwnerDashboard = ({ user, customers, bills, complaints, navigate }) => {
     const thisMonthBills = bills.filter(b => b.generatedDate?.startsWith(new Date().toISOString().slice(0, 7)));
     const totalOutstanding = bills.reduce((sum, b) => sum + (b.balance || 0), 0);
     const activeComplaints = complaints.filter(c => c.status !== 'Completed').length;
@@ -302,7 +346,7 @@ const OwnerDashboard = ({ customers, bills, complaints, navigate }) => {
     const pendingBills = [...bills]
         .filter(b => b.status === 'Due' || b.status === 'Partial')
         .sort((a, b) => (b.balance || 0) - (a.balance || 0))
-        .slice(0, 30);
+        .slice(0, 10);
     const pendingBalance = bills.filter(b => b.status === 'Due' || b.status === 'Partial')
         .reduce((s, b) => s + (b.balance || 0), 0);
 
@@ -336,7 +380,7 @@ const OwnerDashboard = ({ customers, bills, complaints, navigate }) => {
     const recentPayments = bills
         .flatMap(b => (b.payments || []).map(p => ({ ...p, customerName: b.customerName, customerId: b.customerId, billNumber: b.billNumber })))
         .sort((a, b) => new Date(b.date + 'T' + (b.createdAt || '00:00')) - new Date(a.date + 'T' + (a.createdAt || '00:00')))
-        .slice(0, 30);
+        .slice(0, 10);
 
     const getComplaintCustomerName = (c) =>
         customers.find(cu => String(cu.id) === String(c.customerId))?.name || c.customerName || '—';
@@ -344,7 +388,7 @@ const OwnerDashboard = ({ customers, bills, complaints, navigate }) => {
     const recentComplaints = [...complaints]
         .filter(c => c.status !== 'Completed')
         .sort((a, b) => new Date(b.createdAt || b.date || 0) - new Date(a.createdAt || a.date || 0))
-        .slice(0, 30);
+        .slice(0, 10);
 
     const getPaymentBadgeClass = (mode) => {
         const m = mode?.toLowerCase();
@@ -354,28 +398,39 @@ const OwnerDashboard = ({ customers, bills, complaints, navigate }) => {
         return 'payment-badge payment-badge-default';
     };
 
+    const todayDateStr = new Date().toISOString().split('T')[0];
+    const ownerTodayCollected = bills.reduce((sum, b) =>
+        sum + ((b.payments || []).filter(p => p.date === todayDateStr).reduce((s, p) => s + (p.amount || 0), 0)), 0);
+
     return (
         <>
+            <DashboardHero
+                user={user}
+                role="owner"
+                quickStatLabel="Today's collection"
+                quickStatValue={`₹${Math.round(ownerTodayCollected).toLocaleString('en-IN')}`}
+                quickStatIcon={<IndianRupee size={20} />}
+            />
             <div className="stats-grid">
                 <StatCard
                     title="TV Collected"
-                    value={`₹${Math.round(tvCollected).toLocaleString('en-IN')}`}
+                    value={<AnimatedNumber value={Math.round(tvCollected)} prefix="₹" />}
                     subtext="Total Cable TV"
                     icon={<Tv2 size={20} />}
                     color="168, 85, 247"
-                    onClick={() => navigate('/billing', { state: { service: 'tv' } })}
+                    onClick={() => navigate('/payments', { state: { tab: 'payments', service: 'tv' } })}
                 />
                 <StatCard
                     title="Internet Collected"
-                    value={`₹${Math.round(internetCollected).toLocaleString('en-IN')}`}
+                    value={<AnimatedNumber value={Math.round(internetCollected)} prefix="₹" />}
                     subtext="Total Internet"
                     icon={<Wifi size={20} />}
                     color="6, 182, 212"
-                    onClick={() => navigate('/billing', { state: { service: 'internet' } })}
+                    onClick={() => navigate('/payments', { state: { tab: 'payments', service: 'internet' } })}
                 />
                 <StatCard
                     title="TV Outstanding"
-                    value={`₹${Math.round(tvOutstanding).toLocaleString('en-IN')}`}
+                    value={<AnimatedNumber value={Math.round(tvOutstanding)} prefix="₹" />}
                     subtext="Pending Cable TV"
                     icon={<IndianRupee size={20} />}
                     color="248, 113, 113"
@@ -383,7 +438,7 @@ const OwnerDashboard = ({ customers, bills, complaints, navigate }) => {
                 />
                 <StatCard
                     title="Internet Outstanding"
-                    value={`₹${Math.round(internetOutstanding).toLocaleString('en-IN')}`}
+                    value={<AnimatedNumber value={Math.round(internetOutstanding)} prefix="₹" />}
                     subtext="Pending Internet"
                     icon={<IndianRupee size={20} />}
                     color="251, 146, 60"
@@ -391,7 +446,7 @@ const OwnerDashboard = ({ customers, bills, complaints, navigate }) => {
                 />
                 <StatCard
                     title="Total Customers"
-                    value={customers.length}
+                    value={<AnimatedNumber value={customers.length} />}
                     subtext="Active households"
                     icon={<Users size={20} />}
                     color="59, 130, 246"
@@ -399,15 +454,15 @@ const OwnerDashboard = ({ customers, bills, complaints, navigate }) => {
                 />
                 <StatCard
                     title="Active Complaints"
-                    value={activeComplaints}
+                    value={<AnimatedNumber value={activeComplaints} />}
                     subtext="Pending resolution"
                     icon={<AlertCircle size={20} />}
                     color="245, 158, 11"
-                    onClick={() => navigate('/complaints')}
+                    onClick={() => navigate('/complaints', { state: { statusFilter: 'Active' } })}
                 />
                 <StatCard
                     title="Pending Bills"
-                    value={pendingBills.length}
+                    value={<AnimatedNumber value={pendingBills.length} />}
                     subtext={`₹${pendingBalance.toLocaleString('en-IN')} outstanding`}
                     icon={<Receipt size={20} />}
                     color="248, 113, 113"
@@ -463,7 +518,10 @@ const OwnerDashboard = ({ customers, bills, complaints, navigate }) => {
             <div className="dashboard-bottom-grid">
                 {/* Recent Payments */}
                 <div className="card recent-activity">
-                    <h3>Recent Payments</h3>
+                    <div className="recent-activity-head">
+                        <h3>Recent Payments</h3>
+                        <button className="view-all-btn" onClick={() => navigate('/payments')}>View all →</button>
+                    </div>
                     <div className="table-container no-border no-margin">
                         <table className="data-table">
                             <thead>
@@ -506,7 +564,10 @@ const OwnerDashboard = ({ customers, bills, complaints, navigate }) => {
 
                 {/* Recent Complaints */}
                 <div className="card recent-activity">
-                    <h3>Recent Complaints</h3>
+                    <div className="recent-activity-head">
+                        <h3>Recent Complaints</h3>
+                        <button className="view-all-btn" onClick={() => navigate('/complaints', { state: { statusFilter: 'Active' } })}>View all →</button>
+                    </div>
                     <div className="table-container no-border no-margin">
                         <table className="data-table">
                             <thead>
@@ -548,11 +609,14 @@ const OwnerDashboard = ({ customers, bills, complaints, navigate }) => {
 
             {/* Pending Bills */}
             <div className="card recent-activity" style={{ marginTop: 20 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                <div className="recent-activity-head">
                     <h3 style={{ margin: 0 }}>Pending Bills</h3>
-                    <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#f87171' }}>
-                        {pendingBills.length} unpaid
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#f87171' }}>
+                            {pendingBills.length} unpaid
+                        </span>
+                        <button className="view-all-btn" onClick={() => navigate('/payments', { state: { tab: 'pending' } })}>View all →</button>
+                    </div>
                 </div>
                 {pendingBills.length === 0 ? (
                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', textAlign: 'center', padding: '12px 0' }}>No pending bills.</p>
@@ -597,6 +661,76 @@ const OwnerDashboard = ({ customers, bills, complaints, navigate }) => {
 /* ── Shared styles ───────────────────────────────────────────── */
 const DashboardStyles = () => (
     <style>{`
+/* ── Dashboard hero ── */
+.dashboard-hero {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(168,85,247,0.08));
+    border: 1px solid var(--border);
+    border-left: 4px solid #6366f1;
+    border-radius: 20px;
+    padding: 26px 28px;
+    margin-bottom: 24px;
+    overflow: hidden;
+}
+.dashboard-hero-left { flex: 1; min-width: 0; }
+.dashboard-hero-greeting {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 1.6rem; font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+.dashboard-hero-meta {
+    margin-top: 6px;
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+}
+.dashboard-hero-tagline {
+    margin-top: 4px;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    opacity: 0.85;
+}
+.dashboard-hero-stat {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px 16px;
+    min-width: 200px;
+}
+.dashboard-hero-stat-icon {
+    display: flex; align-items: center; justify-content: center;
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    background: rgba(99,102,241,0.15);
+    color: #6366f1;
+}
+.dashboard-hero-stat-label {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.dashboard-hero-stat-value {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+@media (max-width: 720px) {
+    .dashboard-hero {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 20px;
+        gap: 14px;
+    }
+    .dashboard-hero-greeting { font-size: 1.3rem; }
+    .dashboard-hero-stat { min-width: 0; width: 100%; }
+}
+
 /* ── Stat cards ── */
 .stats-grid {
     display: grid;
@@ -754,7 +888,7 @@ const Dashboard = () => {
             <div className="section-header">
                 <h1>Dashboard</h1>
             </div>
-            <OwnerDashboard customers={customers} bills={bills} complaints={complaints} navigate={navigate} />
+            <OwnerDashboard user={user} customers={customers} bills={bills} complaints={complaints} navigate={navigate} />
             <DashboardStyles />
         </div>
     );

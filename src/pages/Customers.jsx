@@ -3,20 +3,22 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import CustomerModal from '../components/CustomerModal';
+import { SkeletonRow } from '../components/Skeleton';
 import {
     Search, UserPlus, Phone, MapPin, Tv, Wifi,
-    Users, ChevronRight, Filter, IndianRupee, Trash2
+    Users, ChevronRight, ChevronLeft, Filter, IndianRupee, Trash2, Box
 } from 'lucide-react';
 
 const PAGE_SIZE = 20;
 
 const Customers = () => {
-    const { customers, bills, addCustomer, addBill, deleteCustomer } = useData();
+    const { customers, bills, addCustomer, addBill, deleteCustomer, loading } = useData();
     const { user } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
     const [search, setSearch] = useState('');
     const [filter, setFilter] = useState('all');
+    const [zoneFilter, setZoneFilter] = useState('all');
     const [modalOpen, setModalOpen] = useState(false);
     const [prefillName, setPrefillName] = useState('');
     const [page, setPage] = useState(1);
@@ -40,6 +42,7 @@ const Customers = () => {
             (c.boxNumber || '').includes(search) ||
             (c.address || '').toLowerCase().includes(search.toLowerCase());
         if (!matchesSearch) return false;
+        if (zoneFilter !== 'all' && (c.zone || '') !== zoneFilter) return false;
         if (filter === 'tv') return c.services?.tv?.active;
         if (filter === 'internet') return c.services?.internet?.active;
         if (filter === 'annual') return !!c.services?.tv?.annualSubscription;
@@ -54,7 +57,7 @@ const Customers = () => {
         bills.filter(b => b.customerId === customerId).reduce((s, b) => s + (b.balance || 0), 0);
 
     // Reset to page 1 when search/filter changes
-    React.useEffect(() => setPage(1), [search, filter]);
+    React.useEffect(() => setPage(1), [search, filter, zoneFilter]);
 
     const handleSave = (data, billSpec) => {
         const newId = addCustomer(data);
@@ -168,6 +171,21 @@ const Customers = () => {
                         <option value="annual">Annual TV</option>
                     </select>
                 </div>
+                <div className="cust-filter-wrap">
+                    <MapPin size={16} style={{ color: 'var(--text-secondary)' }} />
+                    <select
+                        className="cust-filter-select"
+                        value={zoneFilter}
+                        onChange={e => setZoneFilter(e.target.value)}
+                    >
+                        <option value="all">All Zones</option>
+                        <option value="zone1_sln">Zone 1 — SLN</option>
+                        <option value="zone2_raju">Zone 2 — Raju</option>
+                        <option value="zone3_channareddy">Zone 3 — Channareddy</option>
+                        <option value="zone4_ravisetu">Zone 4 — Ravisetu</option>
+                        <option value="">No Zone</option>
+                    </select>
+                </div>
             </div>
 
             {/* Results count */}
@@ -181,7 +199,11 @@ const Customers = () => {
 
             {/* Table */}
             <div className="cust-table-wrap">
-                {filtered.length === 0 ? (
+                {loading ? (
+                    <div style={{ padding: 16 }}>
+                        <SkeletonRow count={5} height={70} />
+                    </div>
+                ) : filtered.length === 0 ? (
                     <div className="cust-empty">
                         <Users size={48} style={{ color: 'var(--text-secondary)', opacity: 0.4 }} />
                         <p>No customers found</p>
@@ -242,7 +264,10 @@ const Customers = () => {
                                         </div>
                                     </td>
                                     <td>
-                                        <span className="cust-box">{c.boxNumber || '—'}</span>
+                                        <span className="cust-box" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                            <Box size={12} style={{ color: 'var(--text-secondary)' }} />
+                                            {c.boxNumber || '—'}
+                                        </span>
                                     </td>
                                     <td>
                                         {(() => {
@@ -342,7 +367,7 @@ const Customers = () => {
                         className="cust-page-btn"
                         onClick={() => setPage(p => Math.max(1, p - 1))}
                         disabled={safePage === 1}
-                    >← Prev</button>
+                    ><ChevronLeft size={16} style={{ verticalAlign: 'middle', marginRight: 4 }} />Prev</button>
                     <span className="cust-page-info">
                         Page {safePage} of {totalPages}
                         <span className="cust-page-sub"> · {filtered.length} total</span>
@@ -351,7 +376,7 @@ const Customers = () => {
                         className="cust-page-btn"
                         onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                         disabled={safePage === totalPages}
-                    >Next →</button>
+                    >Next<ChevronRight size={16} style={{ verticalAlign: 'middle', marginLeft: 4 }} /></button>
                 </div>
             )}
 

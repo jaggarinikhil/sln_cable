@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
-import { Banknote, ChevronDown, ChevronUp, CreditCard, Wallet, TrendingDown, AlertCircle, CheckCircle, Users } from 'lucide-react';
+import { Banknote, ChevronDown, ChevronUp, CreditCard, Wallet, TrendingDown, AlertCircle, CheckCircle, Users, Gift, Calendar, Plus, History, Edit2, Trash2 } from 'lucide-react';
 
 // Palette per worker (same as WorkHours)
 const WORKER_PALETTES = [
@@ -37,6 +37,7 @@ const InlinePaymentForm = ({ worker, palette, onSave, initialData, onCancel }) =
         digitalAmount: initialData?.digitalAmount || '',
         advanceDeduction: initialData?.advanceDeduction || '',
         advanceAmount: initialData?.advanceAmount || '',
+        extraType: initialData?.extraType || 'bonus',
         notes: initialData?.notes || '',
     });
 
@@ -51,6 +52,7 @@ const InlinePaymentForm = ({ worker, palette, onSave, initialData, onCancel }) =
             digitalAmount: '',
             advanceDeduction: '',
             advanceAmount: '',
+            extraType: 'bonus',
             notes: '',
         });
     };
@@ -59,6 +61,7 @@ const InlinePaymentForm = ({ worker, palette, onSave, initialData, onCancel }) =
         if (!worker) return;
         if (type === 'salary' && !totalPaid && !advDed) return;
         if (type === 'advance' && !parseFloat(form.advanceAmount)) return;
+        if (type === 'extra' && !totalPaid) return;
 
         const record = {
             ...(initialData || {}),
@@ -71,6 +74,11 @@ const InlinePaymentForm = ({ worker, palette, onSave, initialData, onCancel }) =
                 cashAmount: parseFloat(form.cashAmount) || 0,
                 digitalAmount: parseFloat(form.digitalAmount) || 0,
                 advanceDeduction: advDed,
+            } : type === 'extra' ? {
+                cashAmount: parseFloat(form.cashAmount) || 0,
+                digitalAmount: parseFloat(form.digitalAmount) || 0,
+                advanceDeduction: 0,
+                extraType: form.extraType,
             } : {
                 advanceAmount: parseFloat(form.advanceAmount) || 0,
                 cashAmount: 0,
@@ -88,7 +96,11 @@ const InlinePaymentForm = ({ worker, palette, onSave, initialData, onCancel }) =
         if (!initialData) resetForm();
     };
 
-    const isDisabled = !worker || (type === 'salary' ? (!totalPaid && !advDed) : !parseFloat(form.advanceAmount));
+    const isDisabled = !worker || (
+        type === 'salary' ? (!totalPaid && !advDed) :
+        type === 'extra' ? !totalPaid :
+        !parseFloat(form.advanceAmount)
+    );
 
     return (
         <div className="sl-inline-form">
@@ -111,7 +123,27 @@ const InlinePaymentForm = ({ worker, palette, onSave, initialData, onCancel }) =
                     onClick={() => setType('advance')}>
                     <AlertCircle size={15} /> Advance
                 </button>
+                <button type="button"
+                    className={`sl-type-btn ${type === 'extra' ? 'active' : ''}`}
+                    style={type === 'extra' ? { borderColor: 'rgba(168,85,247,0.4)', color: '#a855f7', background: 'rgba(168,85,247,0.1)' } : {}}
+                    onClick={() => setType('extra')}>
+                    <Gift size={15} /> Extra
+                </button>
             </div>
+
+            {/* Extra payment sub-category */}
+            {type === 'extra' && (
+                <div className="sl-field">
+                    <label>Extra Payment Type</label>
+                    <select className="sl-input" value={form.extraType}
+                        onChange={e => setForm(f => ({ ...f, extraType: e.target.value }))}>
+                        <option value="bonus">Bonus</option>
+                        <option value="fuel">Fuel</option>
+                        <option value="vehicle_maintenance">Vehicle Maintenance</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+            )}
 
             {/* Month (salary only) */}
             {type === 'salary' && (
@@ -131,7 +163,7 @@ const InlinePaymentForm = ({ worker, palette, onSave, initialData, onCancel }) =
                     max={todayStr} />
             </div>
 
-            {type === 'salary' ? (
+            {(type === 'salary' || type === 'extra') ? (
                 <>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                         <div className="sl-field">
@@ -149,23 +181,29 @@ const InlinePaymentForm = ({ worker, palette, onSave, initialData, onCancel }) =
                     </div>
 
                     {totalPaid > 0 && (
-                        <div className="sl-total-preview" style={{ background: pal.bg, borderColor: pal.border, color: pal.color }}>
-                            <span>Total Payment</span>
+                        <div className="sl-total-preview" style={
+                            type === 'extra'
+                                ? { background: 'rgba(168,85,247,0.1)', borderColor: 'rgba(168,85,247,0.35)', color: '#a855f7' }
+                                : { background: pal.bg, borderColor: pal.border, color: pal.color }
+                        }>
+                            <span>{type === 'extra' ? 'Extra Payment' : 'Total Payment'}</span>
                             <strong>{fmt(totalPaid)}</strong>
                         </div>
                     )}
 
-                    <div className="sl-field">
-                        <label><TrendingDown size={12} /> Advance Deduction (₹) <span style={{ opacity: 0.6, fontWeight: 400 }}>optional</span></label>
-                        <input type="number" className="sl-input" placeholder="0"
-                            value={form.advanceDeduction}
-                            onChange={e => setForm(f => ({ ...f, advanceDeduction: e.target.value }))} />
-                        {advDed > 0 && (
-                            <span style={{ fontSize: '0.72rem', color: '#f59e0b' }}>
-                                {fmt(advDed)} will be deducted from outstanding advance
-                            </span>
-                        )}
-                    </div>
+                    {type === 'salary' && (
+                        <div className="sl-field">
+                            <label><TrendingDown size={12} /> Advance Deduction (₹) <span style={{ opacity: 0.6, fontWeight: 400 }}>optional</span></label>
+                            <input type="number" className="sl-input" placeholder="0"
+                                value={form.advanceDeduction}
+                                onChange={e => setForm(f => ({ ...f, advanceDeduction: e.target.value }))} />
+                            {advDed > 0 && (
+                                <span style={{ fontSize: '0.72rem', color: '#f59e0b' }}>
+                                    {fmt(advDed)} will be deducted from outstanding advance
+                                </span>
+                            )}
+                        </div>
+                    )}
                 </>
             ) : (
                 <div className="sl-field">
@@ -197,8 +235,14 @@ const InlinePaymentForm = ({ worker, palette, onSave, initialData, onCancel }) =
                         flex: 1,
                         background: type === 'salary'
                             ? `linear-gradient(135deg, ${pal.color}, ${pal.color}cc)`
-                            : 'linear-gradient(135deg, #f59e0b, #d97706)',
-                        boxShadow: type === 'salary' ? `0 4px 14px ${pal.shadow}` : '0 4px 14px rgba(245,158,11,0.25)',
+                            : type === 'extra'
+                                ? 'linear-gradient(135deg, #a855f7, #7c3aed)'
+                                : 'linear-gradient(135deg, #f59e0b, #d97706)',
+                        boxShadow: type === 'salary'
+                            ? `0 4px 14px ${pal.shadow}`
+                            : type === 'extra'
+                                ? '0 4px 14px rgba(168,85,247,0.25)'
+                                : '0 4px 14px rgba(245,158,11,0.25)',
                     }}
                     onClick={handleSave}
                     disabled={isDisabled}>
@@ -223,7 +267,7 @@ const FinancialSummaryCard = ({ workerData, allWorkerRecords, palette, onRecordP
 
     const paidThisCycle = allWorkerRecords
         .filter(r => r.type === 'salary' && (r.paymentDate || '') >= curCycleStartStr)
-        .reduce((s, r) => s + (r.cashAmount || 0) + (r.digitalAmount || 0), 0);
+        .reduce((s, r) => s + (r.cashAmount || 0) + (r.digitalAmount || 0) + (r.advanceDeduction || 0), 0);
 
     const balanceDue = monthlySalary - paidThisCycle;
 
@@ -249,7 +293,7 @@ const FinancialSummaryCard = ({ workerData, allWorkerRecords, palette, onRecordP
                 <span className="sl-summary-worker-name">{workerData?.name}</span>
                 <div className="sl-summary-header-right">
                     <span className="sl-summary-cycle-badge">
-                        Cycle from {fmtCycleDate(curCycleStart)}
+                        <Calendar size={11} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />Cycle from {fmtCycleDate(curCycleStart)}
                     </span>
                     {isOwner && onRecordPayment && (
                         <button
@@ -257,7 +301,7 @@ const FinancialSummaryCard = ({ workerData, allWorkerRecords, palette, onRecordP
                             style={{ background: `linear-gradient(135deg, ${pal.color}, ${pal.color}cc)`, boxShadow: `0 4px 14px ${pal.shadow}` }}
                             onClick={onRecordPayment}
                         >
-                            + Record Payment
+                            <Plus size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />Record Payment
                         </button>
                     )}
                 </div>
@@ -378,12 +422,44 @@ const FinancialSummaryCard = ({ workerData, allWorkerRecords, palette, onRecordP
                 </div>
 
             </div>
+
+            {/* Cycle progress bar */}
+            {monthlySalary > 0 && (() => {
+                const pct = Math.min(100, (paidThisCycle / monthlySalary) * 100);
+                return (
+                    <div style={{ marginTop: 14 }}>
+                        <div style={{
+                            display: 'flex', justifyContent: 'space-between',
+                            fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)',
+                            textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6,
+                        }}>
+                            <span>Cycle progress</span>
+                            <span style={{ color: pal.color }}>
+                                {Math.round(pct)}% of {fmt(monthlySalary)}
+                            </span>
+                        </div>
+                        <div style={{
+                            height: 6, width: '100%',
+                            background: 'rgba(255,255,255,0.05)',
+                            borderRadius: 999, overflow: 'hidden',
+                        }}>
+                            <div style={{
+                                height: '100%',
+                                width: `${pct}%`,
+                                background: pal.color,
+                                borderRadius: 999,
+                                transition: 'width 0.6s ease',
+                            }} />
+                        </div>
+                    </div>
+                );
+            })()}
         </div>
     );
 };
 
 // ── Payment History ────────────────────────────────────────────
-const PaymentHistory = ({ cycleGroups, activePalette, curCycleStartStr, monthlySalary, yearFilter, availableYears, onYearChange, isOwner, workerData, onUpdate }) => {
+const PaymentHistory = ({ cycleGroups, activePalette, curCycleStartStr, monthlySalary, yearFilter, availableYears, onYearChange, isOwner, workerData, onUpdate, onDelete }) => {
     const [expandedMonth, setExpandedMonth] = useState(null);
     const [editingId, setEditingId] = useState(null);
     const pal = activePalette || WORKER_PALETTES[0];
@@ -396,9 +472,9 @@ const PaymentHistory = ({ cycleGroups, activePalette, curCycleStartStr, monthlyS
     return (
         <div className="sl-history-section">
             <div className="sl-history-header">
-                <span className="sl-history-title">Payment History</span>
+                <span className="sl-history-title"><History size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 5 }} />Payment History</span>
                 <div className="sl-year-bar">
-                    <span className="sl-year-label">Year:</span>
+                    <span className="sl-year-label"><Calendar size={11} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />Year:</span>
                     {availableYears.map(y => (
                         <button key={y} type="button"
                             className={`sl-year-btn ${yearFilter === y ? 'active' : ''}`}
@@ -420,11 +496,13 @@ const PaymentHistory = ({ cycleGroups, activePalette, curCycleStartStr, monthlyS
                     {cycleGroups.map(([cycleKey, records]) => {
                         const salaryRecs = records.filter(r => r.type === 'salary');
                         const advanceRecs = records.filter(r => r.type === 'advance');
+                        const extraRecs = records.filter(r => r.type === 'extra');
                         const cashTotal = salaryRecs.reduce((s, r) => s + (r.cashAmount || 0), 0);
                         const digitalTotal = salaryRecs.reduce((s, r) => s + (r.digitalAmount || 0), 0);
                         const paidTotal = cashTotal + digitalTotal;
                         const deductionsTotal = salaryRecs.reduce((s, r) => s + (r.advanceDeduction || 0), 0);
                         const advancesTotal = advanceRecs.reduce((s, r) => s + (r.advanceAmount || 0), 0);
+                        const extrasTotal = extraRecs.reduce((s, r) => s + (r.cashAmount || 0) + (r.digitalAmount || 0), 0);
                         const isExpanded = expandedMonth === cycleKey;
 
                         const csDate = new Date(cycleKey + 'T00:00:00');
@@ -458,6 +536,9 @@ const PaymentHistory = ({ cycleGroups, activePalette, curCycleStartStr, monthlyS
                                             {advancesTotal > 0 && (
                                                 <span className="sl-chip sl-chip-advance"><AlertCircle size={9} /> Advance {fmt(advancesTotal)}</span>
                                             )}
+                                            {extrasTotal > 0 && (
+                                                <span className="sl-chip" style={{ background: 'rgba(168,85,247,0.12)', borderColor: 'rgba(168,85,247,0.3)', color: '#a855f7' }}><Gift size={9} /> Extra {fmt(extrasTotal)}</span>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="sl-month-right">
@@ -485,6 +566,8 @@ const PaymentHistory = ({ cycleGroups, activePalette, curCycleStartStr, monthlyS
                                     <div className="sl-month-entries">
                                         {records.map(r => {
                                             const isAdv = r.type === 'advance';
+                                            const isExtra = r.type === 'extra';
+                                            const extraLabels = { bonus: 'Bonus', fuel: 'Fuel', vehicle_maintenance: 'Vehicle Maintenance', other: 'Other' };
                                             const dObj = new Date(r.paymentDate || r.date || r.createdAt);
                                             const paidDate = isNaN(dObj.getTime()) ? '—' : dObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
                                             if (editingId === r.id) {
@@ -506,17 +589,29 @@ const PaymentHistory = ({ cycleGroups, activePalette, curCycleStartStr, monthlyS
                                                     <div className="sl-entry-icon"
                                                         style={isAdv
                                                             ? { background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }
-                                                            : { background: pal.bg, color: pal.color }}>
-                                                        {isAdv ? <AlertCircle size={14} /> : <Banknote size={14} />}
+                                                            : isExtra
+                                                                ? { background: 'rgba(168,85,247,0.12)', color: '#a855f7' }
+                                                                : { background: pal.bg, color: pal.color }}>
+                                                        {isAdv ? <AlertCircle size={14} /> : isExtra ? <Gift size={14} /> : <Banknote size={14} />}
                                                     </div>
                                                     <div className="sl-entry-info">
                                                         <div className="sl-entry-top">
                                                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                                                 <span className="sl-entry-type">
-                                                                    {isAdv ? 'Advance Given' : 'Salary Payment'}
+                                                                    {isAdv ? 'Advance Given' : isExtra ? (extraLabels[r.extraType] || 'Extra') : 'Salary Payment'}
                                                                 </span>
                                                                 {isOwner && (
-                                                                    <button className="sl-entry-edit-btn" onClick={() => setEditingId(r.id)}>Edit</button>
+                                                                    <>
+                                                                        <button className="sl-entry-edit-btn" onClick={() => setEditingId(r.id)}><Edit2 size={10} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 3 }} />Edit</button>
+                                                                        <button
+                                                                            className="sl-entry-delete-btn"
+                                                                            onClick={() => {
+                                                                                if (confirm('Delete this salary record?')) onDelete?.(r.id);
+                                                                            }}
+                                                                        >
+                                                                            <Trash2 size={10} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 3 }} />Delete
+                                                                        </button>
+                                                                    </>
                                                                 )}
                                                             </div>
                                                             <span className="sl-entry-date">{paidDate}</span>
@@ -563,7 +658,7 @@ const Salary = () => {
     const { user } = useAuth();
     const isOwner = user?.role?.toLowerCase() === 'owner';
 
-    const { users, salary: rawSalaries, addSalary, updateSalary } = useData();
+    const { users, salary: rawSalaries, addSalary, updateSalary, deleteSalary } = useData();
     const salaries = rawSalaries.map(migrateRecord).filter(s => !s.deleted);
 
     const allUsers = useMemo(() => users.filter(u => u.active), [users]);
@@ -809,6 +904,7 @@ const Salary = () => {
                         isOwner={isOwner}
                         workerData={selectedWorkerData}
                         onUpdate={updateSalary}
+                        onDelete={deleteSalary}
                     />
                 </>
             )}
@@ -1011,6 +1107,8 @@ const Salary = () => {
                 .sl-entry-edit-wrap { padding: 8px; background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.05); }
                 .sl-entry-edit-btn { background: none; border: none; color: var(--accent); font-size: 0.68rem; font-weight: 700; cursor: pointer; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(99,102,241,0.3); transition: all 0.2s; }
                 .sl-entry-edit-btn:hover { background: rgba(99,102,241,0.1); border-color: var(--accent); }
+                .sl-entry-delete-btn { background: none; border: 1px solid rgba(239,68,68,0.3); color: #ef4444; font-size: 0.68rem; font-weight: 700; cursor: pointer; padding: 2px 6px; border-radius: 4px; transition: all 0.2s; }
+                .sl-entry-delete-btn:hover { background: rgba(239,68,68,0.12); border-color: #ef4444; }
             `}</style>
         </div>
     );

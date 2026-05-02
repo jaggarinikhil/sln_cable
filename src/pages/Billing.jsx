@@ -170,7 +170,7 @@ const GenerateBillModal = ({ onClose, preselectedCustomer }) => {
                                         <button type="button"
                                             className={`svc-type-btn ${formData.serviceType === 'both' ? 'svc-active-both' : ''}`}
                                             onClick={() => handleServiceTypeChange('both')}>
-                                            Both
+                                            <Tv size={11} /><Wifi size={11} /> Both
                                         </button>
                                     )}
                                 </div>

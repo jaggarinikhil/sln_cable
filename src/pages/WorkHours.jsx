@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
-import { Clock, Calendar, Sun, Moon, CalendarX, Briefcase, ChevronDown, ChevronUp, TrendingUp, BarChart2, Edit2, Check, X as XIcon } from 'lucide-react';
+import { Clock, Calendar, Sun, Moon, CalendarX, Briefcase, ChevronDown, ChevronUp, TrendingUp, BarChart2, Edit2, Check, X as XIcon, Users, User, Plus, History } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 const SHIFT_META = {
@@ -286,19 +286,19 @@ const WorkHours = () => {
             {/* Individual view: Stats, Cycle filter, Log form, History */}
             {isOwner && !selectedWorkerId ? (
                 <div className="wh-team-panel">
-                    <div className="wh-team-section-title">All Workers · Current Cycle</div>
+                    <div className="wh-team-section-title"><Users size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 5 }} />All Workers · Current Cycle</div>
 
                     {/* Summary Table */}
                     <div className="wh-team-table-wrap">
                         <table className="wh-team-table">
                             <thead>
                                 <tr>
-                                    <th>Worker</th>
-                                    <th>Cycle</th>
-                                    <th>Days Worked</th>
-                                    <th>Total Hours</th>
-                                    <th>Avg / Day</th>
-                                    <th>Leaves</th>
+                                    <th><User size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />Worker</th>
+                                    <th><Calendar size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />Cycle</th>
+                                    <th><BarChart2 size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />Days Worked</th>
+                                    <th><Clock size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />Total Hours</th>
+                                    <th><TrendingUp size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />Avg / Day</th>
+                                    <th><CalendarX size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />Leaves</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -331,7 +331,7 @@ const WorkHours = () => {
                     {/* Bar Chart */}
                     {teamRows.length > 0 && (
                         <div className="wh-team-chart-wrap">
-                            <div className="wh-team-chart-title">Total Hours This Cycle</div>
+                            <div className="wh-team-chart-title"><BarChart2 size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 5 }} />Total Hours This Cycle</div>
                             <ResponsiveContainer width="100%" height={220}>
                                 <BarChart data={teamRows.map(r => ({ name: r.name, minutes: r.totalMins, hours: parseFloat((r.totalMins / 60).toFixed(1)), color: r.pal.color }))} margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
                                     <XAxis dataKey="name" tick={{ fill: 'var(--text-secondary)', fontSize: 12, fontWeight: 600 }} axisLine={false} tickLine={false} />
@@ -551,13 +551,13 @@ const WorkHours = () => {
                 <div className="wh-history" style={{ '--wc': activePalette.color, '--wbg': activePalette.bg, '--wborder': activePalette.border }}>
                     <div className="wh-history-header">
                         <div className="wh-history-title" style={{ color: activePalette.color }}>
-                            {isOwner ? `${activeUserName}'s Logs` : 'My Logs'}
+                            <History size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 5 }} />{isOwner ? `${activeUserName}'s Logs` : 'My Logs'}
                             {filteredHours.length > 0 && <span className="wh-history-count">{filteredHours.length}</span>}
                         </div>
                         <button type="button" className="wh-log-btn"
                             style={{ background: activePalette.color }}
                             onClick={() => setDialogOpen(true)}>
-                            + Log Entry
+                            <Plus size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 3 }} />Log Entry
                         </button>
                     </div>
                     {Object.keys(grouped).length === 0 ? (

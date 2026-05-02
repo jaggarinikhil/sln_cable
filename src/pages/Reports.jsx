@@ -3,7 +3,8 @@ import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import {
     Calendar, FileText, ChevronDown, ChevronRight,
-    Receipt, Wallet, AlertCircle, Clock, IndianRupee, Users
+    Receipt, Wallet, AlertCircle, Clock, IndianRupee, Users,
+    BarChart3, PieChart as PieIcon, CreditCard, TrendingUp, Banknote, User
 } from 'lucide-react';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -220,7 +221,7 @@ const DailyReport = () => {
                     <label>Date</label>
                     <input type="date" value={date} onChange={e => setDate(e.target.value)} className="rp-date-input" />
                 </div>
-                <button className="rp-today-btn" onClick={() => setDate(today)}>Today</button>
+                <button className="rp-today-btn" onClick={() => setDate(today)}><Calendar size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />Today</button>
             </div>
 
             {/* Summary Stats Row */}
@@ -289,7 +290,7 @@ const DailyReport = () => {
             <div className="daily-charts-row">
                 {/* Billed vs Collected Bar Chart */}
                 <div className="card daily-chart-card">
-                    <h4 className="chart-heading">Billed vs Collected vs Outstanding</h4>
+                    <h4 className="chart-heading"><BarChart3 size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6, color: 'var(--text-secondary)' }} />Billed vs Collected vs Outstanding</h4>
                     <ResponsiveContainer width="100%" height={240}>
                         <BarChart data={billedVsCollectedData} barSize={40}>
                             <defs>
@@ -322,7 +323,7 @@ const DailyReport = () => {
                 {/* Payment Mode Donut Chart */}
                 {modePieData.length > 0 && (
                     <div className="card daily-chart-card">
-                        <h4 className="chart-heading">Payment Modes</h4>
+                        <h4 className="chart-heading"><PieIcon size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6, color: 'var(--text-secondary)' }} />Payment Modes</h4>
                         <div style={{ position: 'relative' }}>
                             <ResponsiveContainer width="100%" height={200}>
                                 <PieChart>
@@ -369,7 +370,7 @@ const DailyReport = () => {
             {/* Collection by Worker Chart */}
             {workerChartData.length > 0 && (
                 <div className="card daily-chart-card">
-                    <h4 className="chart-heading">Collection by Worker</h4>
+                    <h4 className="chart-heading"><Users size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6, color: 'var(--text-secondary)' }} />Collection by Worker</h4>
                     <ResponsiveContainer width="100%" height={Math.max(160, workerChartData.length * 52)}>
                         <BarChart data={workerChartData} layout="vertical" barSize={16}>
                             <defs>
@@ -946,7 +947,7 @@ const MonthlyReport = () => {
             <div className="report-charts-grid">
                 {/* Service Split Donut */}
                 <div className="card chart-card">
-                    <h4 className="chart-heading">Service Split (TV vs Internet)</h4>
+                    <h4 className="chart-heading"><PieIcon size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6, color: 'var(--text-secondary)' }} />Service Split (TV vs Internet)</h4>
                     {serviceSplit.length > 0 ? (
                         <>
                             <div style={{ position: 'relative' }}>
@@ -995,7 +996,7 @@ const MonthlyReport = () => {
 
                 {/* Collection Modes Donut */}
                 <div className="card chart-card">
-                    <h4 className="chart-heading">Collection Modes</h4>
+                    <h4 className="chart-heading"><CreditCard size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6, color: 'var(--text-secondary)' }} />Collection Modes</h4>
                     {modeSplit.length > 0 ? (
                         <>
                             <div style={{ position: 'relative' }}>
@@ -1033,7 +1034,7 @@ const MonthlyReport = () => {
 
                 {/* Worker-wise Collection horizontal stacked bar */}
                 <div className="card chart-card wide">
-                    <h4 className="chart-heading">Worker-wise Collection</h4>
+                    <h4 className="chart-heading"><BarChart3 size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6, color: 'var(--text-secondary)' }} />Worker-wise Collection</h4>
                     <ResponsiveContainer width="100%" height={Math.max(200, workerData.length * 56)}>
                         {workerData.length > 0 ? (
                             <BarChart data={workerData} layout="vertical" barSize={16}>
@@ -1072,7 +1073,13 @@ const MonthlyReport = () => {
                 ) : (
                     <div className="mr-worker-table-wrap">
                         <table className="mr-worker-table">
-                            <thead><tr><th>Worker</th><th>Payments</th><th>Cash</th><th>Online</th><th>Total</th></tr></thead>
+                            <thead><tr>
+                                <th><User size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />Worker</th>
+                                <th><Receipt size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />Payments</th>
+                                <th><Banknote size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />Cash</th>
+                                <th><CreditCard size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />Online</th>
+                                <th><IndianRupee size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />Total</th>
+                            </tr></thead>
                             <tbody>
                                 {workerData.map((w, i) => (
                                     <tr key={i}>

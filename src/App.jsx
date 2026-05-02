@@ -2,6 +2,8 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { DataProvider } from './context/DataContext';
+import { ToastProvider } from './components/Toast';
+import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 
@@ -25,6 +27,8 @@ function App() {
   return (
     <AuthProvider>
       <DataProvider>
+        <ToastProvider>
+        <ThemeProvider>
         <BrowserRouter>
           <Suspense fallback={<div className="page-loading" />}>
             <Routes>
@@ -120,6 +124,8 @@ function App() {
             </Routes>
           </Suspense>
         </BrowserRouter>
+        </ThemeProvider>
+        </ToastProvider>
       </DataProvider>
     </AuthProvider>
   );

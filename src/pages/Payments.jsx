@@ -578,7 +578,7 @@ const Payments = () => {
     const [pendingDateMode, setPendingDateMode] = useState('all');
     const [pendingSingleDate, setPendingSingleDate] = useState('');
     const [userFilter, setUserFilter] = useState('all');
-    const [svcFilter, setSvcFilter] = useState('all');
+    const [svcFilter, setSvcFilter] = useState(location.state?.service || 'all');
 
     const today = new Date();
     const todayStr = today.toISOString().slice(0, 10);
@@ -608,6 +608,8 @@ const Payments = () => {
     else if (pendingDateMode === 'last30') pendingBillsFiltered = pendingBillsFiltered.filter(b => b.generatedDate >= daysAgo(30));
     else if (pendingDateMode === 'last6m') pendingBillsFiltered = pendingBillsFiltered.filter(b => b.generatedDate >= daysAgo(180));
     else if (pendingDateMode === 'single' && pendingSingleDate) pendingBillsFiltered = pendingBillsFiltered.filter(b => b.generatedDate === pendingSingleDate);
+    if (svcFilter === 'tv') pendingBillsFiltered = pendingBillsFiltered.filter(b => b.serviceType === 'tv' || b.serviceType === 'both');
+    else if (svcFilter === 'internet') pendingBillsFiltered = pendingBillsFiltered.filter(b => b.serviceType === 'internet' || b.serviceType === 'both');
     const pendingCount = pendingBillsFiltered.length;
     const totalOutstanding = bills.reduce((sum, b) => sum + (b.balance || 0), 0);
 

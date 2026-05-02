@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
     Users, Receipt, CreditCard, HardHat,
-    Clock, Banknote, FileText, UserCog, LogOut, History, Menu, X, KeyRound, Save, Wallet, User
+    Clock, Banknote, FileText, UserCog, LogOut, History, Menu, X, KeyRound, Save, Wallet, User, Sun, Moon
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { storage } from '../utils/storage';
 
 /* ─── Change Password Modal ─────────────────────────────────── */
@@ -113,12 +114,13 @@ const navItems = [
     { to: '/salary', icon: <Banknote size={16} />, label: 'Salary', perm: 'viewOwnSalary' },
     { to: '/reports', icon: <FileText size={16} />, label: 'Reports', perm: 'viewReports' },
     { to: '/users', icon: <UserCog size={16} />, label: 'Users', perm: 'manageUsers' },
-    { to: '/expenses', icon: <Wallet size={16} />, label: 'Expenses', perm: 'manageUsers' },
+    { to: '/expenses', icon: <Wallet size={16} />, label: 'Business Expenses', perm: 'manageUsers' },
     { to: '/personal', icon: <User size={16} />, label: 'Personal', perm: 'manageUsers' },
 ];
 
 const TopBar = () => {
     const { user, logout } = useAuth();
+    const { theme, toggle: toggleTheme } = useTheme();
     const [menuOpen, setMenuOpen] = useState(false);
     const [changePwdOpen, setChangePwdOpen] = useState(false);
 
@@ -157,6 +159,9 @@ const TopBar = () => {
                         </div>
                         <span className="topnav-username">{user?.name}</span>
                     </div>
+                    <button className="topnav-logout" onClick={toggleTheme} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+                        {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+                    </button>
                     <button className="topnav-logout" onClick={() => setChangePwdOpen(true)} title="Change Password">
                         <KeyRound size={16} />
                     </button>
